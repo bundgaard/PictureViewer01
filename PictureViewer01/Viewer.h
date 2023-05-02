@@ -1,6 +1,6 @@
 #pragma once
 #include "Application.h"
-
+#include <dwrite.h>
 constexpr wchar_t PICTURE[] = L"C:\\Code\\ArtMesa.png";
 
 template<typename T>
@@ -68,11 +68,13 @@ private:
 	ID2D1Bitmap* m_bitmap = nullptr;
 	ID2D1SolidColorBrush* m_brush = nullptr;
 
+	IDWriteFactory* m_dwrite_factory = nullptr;
 
 	float m_lastMouseX{};
 	float m_lastMouseY{};
 	float m_imageX{};
 	float m_imageY{};
+	float m_scaleFactor = 1.0;
 
 };
 

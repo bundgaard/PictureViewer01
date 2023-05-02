@@ -1,5 +1,6 @@
 #include "Viewer.h"
 #include <windowsx.h>
+
 Viewer::Viewer() : m_bitmap(nullptr), m_wic_factory(nullptr), m_d2_factory(nullptr), m_brush(nullptr), m_renderTarget(nullptr)
 {
 }
@@ -12,6 +13,7 @@ Viewer::~Viewer()
 	SafeRelease(m_wic_converter);
 	SafeRelease(m_d2_factory);
 	SafeRelease(m_renderTarget);
+	SafeRelease(m_dwrite_factory);
 }
 
 HRESULT Viewer::Initialize(HINSTANCE hInst)
@@ -33,6 +35,10 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 	{
 		OutputDebugStringW(L"Created WIC Factory\n");
 		hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_d2_factory);
+	}
+	if (SUCCEEDED(hr))
+	{
+		hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, _uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&m_dwrite_factory));
 	}
 
 	if (SUCCEEDED(hr))
@@ -103,12 +109,9 @@ inline LRESULT Viewer::OnPaint(HWND hwnd)
 {
 	HRESULT hr = S_OK;
 	PAINTSTRUCT ps{};
-	OutputDebugStringW(L"Received WM_PAINT\n");
 	if (BeginPaint(hwnd, &ps))
 	{
-		OutputDebugStringW(L"Begun paint\n");
 		hr = CreateDeviceResources(hwnd);
-
 		if (SUCCEEDED(hr) && !(m_renderTarget->CheckWindowState() & D2D1_WINDOW_STATE_OCCLUDED))
 		{
 			m_renderTarget->BeginDraw();
@@ -123,6 +126,36 @@ inline LRESULT Viewer::OnPaint(HWND hwnd)
 			{
 				m_renderTarget->CreateBitmapFromWicBitmap(m_wic_converter, &m_bitmap);
 			}
+			std::wstring PressSpaceText = L"Press [SPACE BAR] to show the picture.";
+			IDWriteTextFormat* textFormat = nullptr;
+			if (SUCCEEDED(hr))
+			{
+				hr = m_dwrite_factory->CreateTextFormat(
+					L"Comic Sans MS",
+					nullptr,
+					DWRITE_FONT_WEIGHT_NORMAL,
+					DWRITE_FONT_STYLE_NORMAL,
+					DWRITE_FONT_STRETCH_NORMAL,
+					18.0f,
+					L"",
+					&textFormat);
+			}
+			if (SUCCEEDED(hr))
+			{
+				auto color = m_brush->GetColor();
+				m_brush->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
+				m_renderTarget->DrawTextW(
+					PressSpaceText.c_str(),
+					PressSpaceText.size(),
+					textFormat,
+					D2D1::RectF(320.0f, 240.0f, 640.0f, 480.f),
+					m_brush,
+					D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT);
+				m_brush->SetColor(color);
+			}
+
+
+			SafeRelease(textFormat);
 			if (m_bitmap)
 			{
 				auto ClientSize = m_renderTarget->GetSize();
@@ -130,15 +163,14 @@ inline LRESULT Viewer::OnPaint(HWND hwnd)
 				auto WidthRatio = std::abs(BitmapSize.width / ClientSize.width);
 				auto HeightRatio = std::abs(BitmapSize.height / ClientSize.height);
 				auto Ratio = std::min(HeightRatio, WidthRatio);
-				wchar_t Buf[64] = { 0 };
-				swprintf(Buf, 64, L"Ratios %f, %f %f, %f,%f\n", WidthRatio, HeightRatio, Ratio, m_imageX, m_imageY);
-				OutputDebugStringW(Buf);
-
-				auto ClientRect = D2D1::RectF(m_imageX, m_imageY, m_imageX + BitmapSize.width / Ratio, m_imageY + BitmapSize.height / Ratio);
-
+				Ratio *= m_scaleFactor;
+				auto ClientRect = D2D1::RectF(m_imageX, m_imageY, m_imageX + BitmapSize.width, m_imageY + BitmapSize.height);
+				D2D1_MATRIX_3X2_F transform{};
+				m_renderTarget->GetTransform(&transform);
+				m_renderTarget->SetTransform(D2D1::Matrix3x2F::Scale(Ratio, Ratio));
 				m_renderTarget->DrawBitmap(m_bitmap, ClientRect);
+				m_renderTarget->SetTransform(transform);
 			}
-			//	m_renderTarget->DrawBitmap(m_bitmap);
 			hr = m_renderTarget->EndDraw();
 			if (hr == D2DERR_RECREATE_TARGET)
 			{
@@ -185,6 +217,23 @@ inline LRESULT Viewer::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam
 		m_lastMouseY = static_cast<float>(GET_Y_LPARAM(lparam));
 	}
 	return 0;
+	case WM_MOUSEWHEEL:
+	{
+		auto dScale = GET_WHEEL_DELTA_WPARAM(wparam);
+		if (dScale > 0)
+		{
+			m_scaleFactor *= 1.1f;
+		}
+		else if (dScale < 0)
+		{
+			m_scaleFactor /= 1.1f;
+		}
+		wchar_t Buf[64] = { 0 };
+		swprintf(Buf, 64, L"Zoom: %f\n", (1.0f - m_scaleFactor) * 100.f);
+		OutputDebugStringW(Buf);
+		InvalidateRect(hwnd, nullptr, false);
+	}
+	return 0;
 	case WM_LBUTTONUP:
 	{
 		ReleaseCapture();
@@ -199,11 +248,12 @@ inline LRESULT Viewer::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam
 	{
 		if (wparam == VK_SPACE)
 		{
+			m_imageX = m_imageY = 0;
+			m_scaleFactor = 1.0f;
 			HRESULT hr = this->LoadFile(PICTURE);
 			if (SUCCEEDED(hr))
 			{
 				OutputDebugStringW(L"Loaded file\n");
-
 			}
 		}
 
