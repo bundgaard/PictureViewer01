@@ -1,6 +1,5 @@
 #include "Viewer.h"
 #include <windowsx.h>
-
 Viewer::Viewer() : m_bitmap(nullptr), m_wic_factory(nullptr), m_d2_factory(nullptr), m_brush(nullptr), m_renderTarget(nullptr)
 {
 }
@@ -91,9 +90,15 @@ HRESULT Viewer::CreateDeviceResources(HWND hwnd)
 		if (SUCCEEDED(hr))
 		{
 			OutputDebugStringW(L"Creating HWND render target\n");
+			D2D1_RENDER_TARGET_PROPERTIES renderProperties = D2D1::RenderTargetProperties();
+			renderProperties.dpiX = 96.0f;
+			renderProperties.dpiY = 96.0f;
+
+			auto hwndProperties = D2D1::HwndRenderTargetProperties(hwnd, D2D1::SizeU((rc.right - rc.left), (rc.bottom - rc.top)));
+
 			hr = m_d2_factory->CreateHwndRenderTarget(
-				D2D1::RenderTargetProperties(),
-				D2D1::HwndRenderTargetProperties(hwnd, D2D1::SizeU(640, 480)),
+				renderProperties,
+				hwndProperties,
 				&m_renderTarget);
 			if (SUCCEEDED(hr))
 			{
@@ -105,7 +110,7 @@ HRESULT Viewer::CreateDeviceResources(HWND hwnd)
 	return hr;
 }
 
-inline LRESULT Viewer::OnPaint(HWND hwnd)
+inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 {
 	HRESULT hr = S_OK;
 	PAINTSTRUCT ps{};
@@ -117,11 +122,14 @@ inline LRESULT Viewer::OnPaint(HWND hwnd)
 			m_renderTarget->BeginDraw();
 			m_renderTarget->SetTransform(D2D1::IdentityMatrix());
 			m_renderTarget->Clear();
+
 			auto color = m_brush->GetColor();
 			m_brush->SetColor(D2D1::ColorF(D2D1::ColorF::PaleVioletRed));
 			m_renderTarget->FillRectangle(D2D1::RectF(0.f, 0.f, 640.f, 480.f), m_brush);
 			m_brush->SetColor(color);
+
 			m_renderTarget->DrawLine(D2D1::Point2F(0.0f, 0.0f), D2D1::Point2F(100.0f, 100.0f), m_brush);
+
 			if (m_wic_converter && !m_bitmap)
 			{
 				m_renderTarget->CreateBitmapFromWicBitmap(m_wic_converter, &m_bitmap);
@@ -186,96 +194,28 @@ inline LRESULT Viewer::OnPaint(HWND hwnd)
 	return SUCCEEDED(hr) ? S_OK : E_FAIL;
 }
 
-inline LRESULT Viewer::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 {
-	switch (msg)
+	if (VirtualKey == VK_SPACE)
 	{
-	case WM_PAINT:
-		return OnPaint(hwnd);
-	case WM_SIZE:
-	{
-		OutputDebugStringW(L"Received WM_SIZE\n");
-		auto Width = LOWORD(lparam);
-		auto Height = HIWORD(lparam);
+		m_imageX = m_imageY = 0;
+		m_scaleFactor = 1.0f;
+		HRESULT hr = this->LoadFile(PICTURE);
+		if (SUCCEEDED(hr))
+		{
+			OutputDebugStringW(L"Loaded file\n");
+		}
+	}
 
-		if (m_renderTarget != nullptr)
-		{
-			if (FAILED(m_renderTarget->Resize(D2D1::SizeU(Width, Height))))
-			{
-				SafeRelease(m_renderTarget);
-				SafeRelease(m_bitmap);
-				SafeRelease(m_brush);
-			}
-		}
-	}
-	break;
+	if (VirtualKey == VK_ESCAPE)
+	{
+		m_imageX = 0;
+		m_imageY = 0;
 
-	case WM_LBUTTONDOWN:
-	{
-		SetCapture(hwnd);
-		m_lastMouseX = static_cast<float>(GET_X_LPARAM(lparam));
-		m_lastMouseY = static_cast<float>(GET_Y_LPARAM(lparam));
 	}
-	return 0;
-	case WM_MOUSEWHEEL:
-	{
-		auto dScale = GET_WHEEL_DELTA_WPARAM(wparam);
-		if (dScale > 0)
-		{
-			m_scaleFactor *= 1.1f;
-		}
-		else if (dScale < 0)
-		{
-			m_scaleFactor /= 1.1f;
-		}
-		wchar_t Buf[64] = { 0 };
-		swprintf(Buf, 64, L"Zoom: %f\n", (1.0f - m_scaleFactor) * 100.f);
-		OutputDebugStringW(Buf);
-		InvalidateRect(hwnd, nullptr, false);
-	}
-	return 0;
-	case WM_LBUTTONUP:
-	{
-		ReleaseCapture();
-	}
-	return 0;
-	case WM_MOUSEMOVE:
-	{
-		OnMouseMove(MouseMoveControl(wparam), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
-	}
-	return 0;
-	case WM_KEYDOWN:
-	{
-		if (wparam == VK_SPACE)
-		{
-			m_imageX = m_imageY = 0;
-			m_scaleFactor = 1.0f;
-			HRESULT hr = this->LoadFile(PICTURE);
-			if (SUCCEEDED(hr))
-			{
-				OutputDebugStringW(L"Loaded file\n");
-			}
-		}
-
-		if (wparam == VK_ESCAPE)
-		{
-			m_imageX = 0;
-			m_imageY = 0;
-
-		}
-		InvalidateRect(hwnd, nullptr, true);
-	}
-	return 0;
-	case WM_DESTROY:
-	{
-		PostQuitMessage(0);
-	}
-	return 0;
-	default:
-		return DefWindowProcW(hwnd, msg, wparam, lparam);
-	}
-	return 0;
+	InvalidateRect(m_hwnd, nullptr, true);
 }
+
 
 HRESULT Viewer::LoadFile(std::wstring const& Path)
 {
@@ -320,22 +260,34 @@ HRESULT Viewer::LoadFile(std::wstring const& Path)
 	return hr;
 }
 
-LRESULT Viewer::OnNcCreate(WPARAM wparam, LPARAM lparam)
+void Viewer::OnSize(UINT Width, UINT Height) noexcept
 {
-	SetWindowLongPtrW(m_hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
-	return DefWindowProcW(m_hwnd, WM_NCCREATE, wparam, lparam);
-
+	OutputDebugStringW(L"Received WM_SIZE\n");
+	wchar_t Buf[64] = { 0 };
+	swprintf(Buf, 64, L"%u,%u\n", Width, Height);
+	OutputDebugStringW(Buf);
+	if (m_renderTarget != nullptr)
+	{
+		if (FAILED(m_renderTarget->Resize(D2D1::SizeU(Width, Height))))
+		{
+			SafeRelease(m_renderTarget);
+			SafeRelease(m_bitmap);
+			SafeRelease(m_brush);
+		}
+	}
 }
 
-void Viewer::OnMouseMove(MouseMoveControl ctrl, int x, int y)
+void Viewer::OnMouseMove(MouseMoveControl ctrl, float x, float y) noexcept
 {
 	switch (ctrl)
 	{
 	case MouseMoveControl::LeftButton:
 	{
-		auto pt = D2D1::Point2F(static_cast<float>(x), static_cast<float>(y));
-		float dx = static_cast<float>(pt.x - m_lastMouseX);
-		float dy = static_cast<float>(pt.y - m_lastMouseY);
+		auto pt = D2D1::Point2F(x, y);
+
+		float dx = pt.x - m_lastMouseX;
+		float dy = pt.y - m_lastMouseY;
+
 		m_lastMouseX = pt.x;
 		m_lastMouseY = pt.y;
 
@@ -345,4 +297,33 @@ void Viewer::OnMouseMove(MouseMoveControl ctrl, int x, int y)
 	}
 	break;
 	}
+}
+
+void Viewer::OnLButtonDown(float x, float y) noexcept
+{
+
+	SetCapture(m_hwnd);
+	m_lastMouseX = x;
+	m_lastMouseY = y;
+}
+
+void Viewer::OnLButtonUp(float x, float y) noexcept
+{
+	ReleaseCapture();
+}
+
+void Viewer::OnMouseScrollWheel(short delta) noexcept
+{
+	if (delta > 0)
+	{
+		m_scaleFactor *= 1.1f;
+	}
+	else if (delta < 0)
+	{
+		m_scaleFactor /= 1.1f;
+	}
+	wchar_t Buf[64] = { 0 };
+	swprintf(Buf, 64, L"Zoom: %f\n", (1.0f - m_scaleFactor) * 100.f);
+	OutputDebugStringW(Buf);
+	InvalidateRect(m_hwnd, nullptr, false);
 }
