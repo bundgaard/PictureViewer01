@@ -50,6 +50,7 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 		wc.lpfnWndProc = (WNDPROC)Viewer::s_WndProc;
 		wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
 		wc.hIcon = wc.hIconSm = LoadIcon(nullptr, IDI_APPLICATION);
+		wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
 		wc.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
 		wc.hInstance = hInst;
 
@@ -168,7 +169,7 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 			{
 				auto ClientSize = m_renderTarget->GetSize();
 				auto BitmapSize = m_bitmap->GetSize();
-				auto WidthRatio = std::abs(BitmapSize.width / ClientSize.width);
+				auto WidthRatio = std::abs(BitmapSize.width / ClientSize.width); // TODO need to fix this so it doesn't scale when resizing app
 				auto HeightRatio = std::abs(BitmapSize.height / ClientSize.height);
 				auto Ratio = std::min(HeightRatio, WidthRatio);
 				Ratio *= m_scaleFactor;
