@@ -1,17 +1,26 @@
 #include "Viewer.h"
 #include <windowsx.h>
-Viewer::Viewer() : m_bitmap(nullptr), m_wic_factory(nullptr), m_d2_factory(nullptr), m_brush(nullptr), m_renderTarget(nullptr)
+Viewer::Viewer() :
+	m_bitmap(nullptr), 
+	m_wic_factory(nullptr),
+	m_d2_factory(nullptr), 
+	m_brush(nullptr),
+	m_renderTarget(nullptr)
 {
 }
 
 Viewer::~Viewer()
 {
+
 	SafeRelease(m_brush);
 	SafeRelease(m_bitmap);
-	SafeRelease(m_wic_factory);
-	SafeRelease(m_wic_converter);
 	SafeRelease(m_d2_factory);
 	SafeRelease(m_renderTarget);
+
+	SafeRelease(m_wic_factory);
+	SafeRelease(m_wic_converter);
+
+	SafeRelease(m_textFormat);
 	SafeRelease(m_dwrite_factory);
 }
 
@@ -35,9 +44,23 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 		OutputDebugStringW(L"Created WIC Factory\n");
 		hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_d2_factory);
 	}
+
 	if (SUCCEEDED(hr))
 	{
 		hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, _uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&m_dwrite_factory));
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		hr = m_dwrite_factory->CreateTextFormat(
+			L"Comic Sans MS",
+			nullptr,
+			DWRITE_FONT_WEIGHT_NORMAL,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			18.0f,
+			L"",
+			&m_textFormat);
 	}
 
 	if (SUCCEEDED(hr))
@@ -105,10 +128,19 @@ HRESULT Viewer::CreateDeviceResources(HWND hwnd)
 			{
 				hr = m_renderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &m_brush);
 			}
+
 		}
 	}
 
 	return hr;
+}
+
+inline float GetImageRatio(float width, float height)
+{
+	auto Big = std::max(width, height);
+	auto Small = std::min(width, height);
+	auto Ratio = std::abs(Big / Small);
+	return Ratio;
 }
 
 inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
@@ -136,47 +168,37 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 				m_renderTarget->CreateBitmapFromWicBitmap(m_wic_converter, &m_bitmap);
 			}
 			std::wstring PressSpaceText = L"Press [SPACE BAR] to show the picture.";
-			IDWriteTextFormat* textFormat = nullptr;
+			IDWriteTextLayout* layout = nullptr;
 			if (SUCCEEDED(hr))
 			{
-				hr = m_dwrite_factory->CreateTextFormat(
-					L"Comic Sans MS",
-					nullptr,
-					DWRITE_FONT_WEIGHT_NORMAL,
-					DWRITE_FONT_STYLE_NORMAL,
-					DWRITE_FONT_STRETCH_NORMAL,
-					18.0f,
-					L"",
-					&textFormat);
+				hr = m_dwrite_factory->CreateTextLayout(PressSpaceText.c_str(), static_cast<UINT32>(PressSpaceText.size()), m_textFormat, 320.f, 240.f, &layout);
 			}
+			DWRITE_TEXT_METRICS metric{};
+			if (SUCCEEDED(hr))
+			{
+				hr = layout->GetMetrics(&metric);
+			}
+
 			if (SUCCEEDED(hr))
 			{
 				auto color = m_brush->GetColor();
 				m_brush->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
-				m_renderTarget->DrawTextW(
-					PressSpaceText.c_str(),
-					PressSpaceText.size(),
-					textFormat,
-					D2D1::RectF(320.0f, 240.0f, 640.0f, 480.f),
-					m_brush,
-					D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT);
+				m_renderTarget->DrawTextLayout(D2D1::Point2F((640.0f - metric.width) / 2.0f, (480.0f - metric.height) / 2.0f), layout, m_brush, D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT);
 				m_brush->SetColor(color);
 			}
-
-
-			SafeRelease(textFormat);
+			SafeRelease(layout);
 			if (m_bitmap)
 			{
 				auto ClientSize = m_renderTarget->GetSize();
 				auto BitmapSize = m_bitmap->GetSize();
 				auto WidthRatio = std::abs(BitmapSize.width / ClientSize.width); // TODO need to fix this so it doesn't scale when resizing app
 				auto HeightRatio = std::abs(BitmapSize.height / ClientSize.height);
-				auto Ratio = std::min(HeightRatio, WidthRatio);
+				auto Ratio = GetImageRatio(BitmapSize.width, BitmapSize.height);
 				Ratio *= m_scaleFactor;
 				auto ClientRect = D2D1::RectF(m_imageX, m_imageY, m_imageX + BitmapSize.width, m_imageY + BitmapSize.height);
 				D2D1_MATRIX_3X2_F transform{};
 				m_renderTarget->GetTransform(&transform);
-				m_renderTarget->SetTransform(D2D1::Matrix3x2F::Scale(Ratio, Ratio));
+				m_renderTarget->SetTransform(D2D1::Matrix3x2F::Scale(m_scaleFactor, m_scaleFactor));
 				m_renderTarget->DrawBitmap(m_bitmap, ClientRect);
 				m_renderTarget->SetTransform(transform);
 			}
@@ -201,18 +223,43 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 	{
 		m_imageX = m_imageY = 0;
 		m_scaleFactor = 1.0f;
+		m_zip_files.clear();
+		m_zip_files = ReadZip(L"C:\\Code\\pics.zip");
 		HRESULT hr = this->LoadFile(PICTURE);
 		if (SUCCEEDED(hr))
 		{
 			OutputDebugStringW(L"Loaded file\n");
 		}
+		m_currentPage = 0;
+
+	}
+	if (VirtualKey == VK_PRIOR)
+	{
+
+		HRESULT hr = this->LoadImage(+1);
+		if (SUCCEEDED(hr))
+		{
+			OutputDebugStringW(L"Loaded image\n");
+		}
+		// PageUp
+	}
+	if (VirtualKey == VK_NEXT)
+	{
+		// Page Down
+		HRESULT hr = this->LoadImage(-1);
+		if (SUCCEEDED(hr))
+		{
+			OutputDebugStringW(L"Loaded image\n");
+		}
 	}
 
 	if (VirtualKey == VK_ESCAPE)
 	{
-		m_imageX = 0;
-		m_imageY = 0;
-
+		OutputDebugStringW(L"ESCAPE pressed\n");
+		m_imageX = m_imageY = 0;
+		m_zip_files.clear();
+		SafeRelease(m_wic_converter);
+		SafeRelease(m_bitmap);
 	}
 	InvalidateRect(m_hwnd, nullptr, true);
 }
@@ -258,6 +305,59 @@ HRESULT Viewer::LoadFile(std::wstring const& Path)
 	SafeRelease(decoder);
 	SafeRelease(frame);
 
+	return hr;
+}
+
+HRESULT Viewer::LoadImage(int delta) noexcept
+{
+	HRESULT hr = S_OK;
+	IWICBitmapDecoder* decoder = nullptr;
+
+	SafeRelease(m_bitmap);
+	SafeRelease(m_wic_converter);
+
+	if (SUCCEEDED(hr))
+	{
+		hr = m_zip_files.size() > 0 ? S_OK : E_FAIL;
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		int index = (m_currentPage + delta) % m_zip_files.size();
+		hr = m_wic_factory->CreateDecoderFromStream(m_zip_files[index].Stream, nullptr, WICDecodeMetadataCacheOnLoad, &decoder);
+		m_currentPage = m_currentPage + delta; // TODO: destructor is run when this scope ends.
+	}
+
+	IWICBitmapFrameDecode* frame = nullptr;
+	if (SUCCEEDED(hr))
+	{
+		hr = decoder->GetFrame(0, &frame);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		SafeRelease(m_wic_converter);
+		hr = m_wic_factory->CreateFormatConverter(&m_wic_converter);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		hr = m_wic_converter->Initialize(frame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, nullptr, 0.0f, WICBitmapPaletteTypeCustom);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		hr = CreateDeviceResources(m_hwnd);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		SafeRelease(m_bitmap);
+		hr = m_renderTarget->CreateBitmapFromWicBitmap(m_wic_converter, &m_bitmap);
+	}
+
+	SafeRelease(decoder);
+	SafeRelease(frame);
 	return hr;
 }
 
@@ -327,4 +427,65 @@ void Viewer::OnMouseScrollWheel(short delta) noexcept
 	swprintf(Buf, 64, L"Zoom: %f\n", (1.0f - m_scaleFactor) * 100.f);
 	OutputDebugStringW(Buf);
 	InvalidateRect(m_hwnd, nullptr, false);
+}
+
+
+std::string FromWideString(std::wstring const& Text)
+{
+	auto const Size = WideCharToMultiByte(CP_UTF8, 0, Text.c_str(), static_cast<int>(Text.size()), nullptr, 0, nullptr, nullptr);
+	std::string Result;
+	Result.resize(Size);
+	WideCharToMultiByte(CP_UTF8, 0, Text.c_str(), static_cast<int>(Text.size()), Result.data(), Result.size(), nullptr, nullptr);
+	return Result;
+}
+
+std::vector<ZipFile> ReadZip(std::wstring const& Filename)
+{
+	std::vector<ZipFile> Files;
+
+	zip* archive = zip_open(FromWideString(Filename).c_str(), 0, nullptr);
+	if (!archive)
+	{
+		OutputDebugStringW(L"Failed to open zip archive\n");
+		return {};
+	}
+	auto NumFiles = zip_get_num_files(archive);
+
+	std::wstring NumberOfFiles{};
+	NumberOfFiles += std::to_wstring(NumFiles);
+	NumberOfFiles += L"\n";
+	OutputDebugStringW(NumberOfFiles.c_str());
+
+	Files.reserve(NumFiles);
+	for (int i = 0; i < NumFiles; i++)
+	{
+		struct zip_stat stat;
+		zip_stat_index(archive, i, 0, &stat);
+
+		zip_file* File = zip_fopen_index(archive, i, 0);
+		if (File)
+		{
+			std::vector<char> buffer(sizeof(ZipFile));
+
+			ZipFile* ptr = new(buffer.data()) ZipFile(stat.name, static_cast<size_t>(stat.size));
+
+			std::vector<byte> Bytes;
+			Bytes.resize(ptr->Size);
+			zip_int64_t bytes_read = zip_fread(File, Bytes.data(), Bytes.size());
+			HRESULT hr = S_OK;
+			hr = bytes_read == ptr->Size ? S_OK : E_FAIL;
+			if (SUCCEEDED(hr))
+			{
+				hr = ptr->Write(std::move(Bytes));
+			}
+
+			if (SUCCEEDED(hr))
+			{
+				Files.emplace_back(std::move(*ptr));
+				zip_fclose(File);
+			}
+		}
+	}
+	zip_close(archive);
+	return Files;
 }

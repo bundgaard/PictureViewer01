@@ -6,3 +6,7 @@
 #include <wincodec.h>
 
 #include <string>
+#include <zip.h>
+#include <vector>
+
+

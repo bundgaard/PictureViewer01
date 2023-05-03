@@ -28,10 +28,10 @@ public:
 	virtual ~BaseWindow() = 0;
 	virtual HRESULT Initialize(HINSTANCE hInst) = 0;
 
-	[[nodiscard]] virtual LRESULT OnPaint(HWND hwnd) = 0;
+	[[nodiscard]] virtual LRESULT OnPaint(HWND hwnd) noexcept = 0;
 
 
-	virtual void OnSize(UINT Width, UINT Height) = 0;
+	virtual void OnSize(UINT Width, UINT Height) noexcept = 0;
 	virtual void OnLButtonDown(float x, float y) noexcept = 0;
 	virtual void OnLButtonUp(float x, float y) noexcept = 0;
 	virtual void OnMouseMove(MouseMoveControl ctrl, float x, float y) noexcept = 0;
@@ -49,6 +49,11 @@ public:
 	{
 		switch (msg)
 		{
+		case WM_MOUSEWHEEL:
+		{
+			OnMouseScrollWheel(GET_WHEEL_DELTA_WPARAM(wparam));
+			return 0;
+		}
 		case WM_DESTROY:
 		{
 			PostQuitMessage(0);
@@ -77,11 +82,7 @@ public:
 			OnMouseMove(MouseMoveControl(wparam), static_cast<float>(GET_X_LPARAM(lparam)), static_cast<float>(GET_Y_LPARAM(lparam)));
 			break;
 		}
-		case WM_MOUSEHWHEEL:
-		{
-			OnMouseScrollWheel(GET_WHEEL_DELTA_WPARAM(wparam));
-			break;
-		}
+
 		case WM_SIZE:
 		{
 			UINT Width = LOWORD(lparam);
@@ -103,7 +104,6 @@ public:
 	{
 		if (msg == WM_NCCREATE)
 		{
-			OutputDebugStringW(L"Received WM_NCCREATE\n");
 			auto cs = reinterpret_cast<LPCREATESTRUCT>(lparam);
 			Clz* pThis = reinterpret_cast<Clz*>(cs->lpCreateParams);
 			pThis->m_hwnd = hwnd;
