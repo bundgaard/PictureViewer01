@@ -92,10 +92,6 @@ public:
 	virtual void OnLButtonUp(float x, float y) noexcept override;
 	virtual void OnMouseScrollWheel(short delta) noexcept override;
 
-	void NextImage() noexcept;
-	void PreviousImage() noexcept;
-
-
 private:
 	IWICImagingFactory* m_wic_factory = nullptr;
 	IWICFormatConverter* m_wic_converter = nullptr;
