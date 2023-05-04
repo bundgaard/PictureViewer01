@@ -2,7 +2,10 @@
 #include "Application.h"
 #include "BaseWindow.h"
 
+#include <memory>
+
 #include <dwrite.h>
+
 constexpr wchar_t PICTURE[] = L"C:\\Code\\digits.png";
 
 template<typename T>
@@ -14,6 +17,13 @@ inline void SafeRelease(T*& t)
 		t = nullptr;
 	}
 }
+
+struct ZipMemory
+{
+	void* GlobalData;
+	HGLOBAL Global;
+
+};
 
 struct ZipFile
 {
@@ -35,7 +45,7 @@ struct ZipFile
 
 	~ZipFile()
 	{
-
+		OutputDebugStringW(L"ZipFile destructor\n");
 		if (Global)
 			GlobalFree(Global);
 		SafeRelease(Stream);
@@ -61,17 +71,26 @@ struct ZipFile
 			hr = GlobalUnlock(GlobalData) ? S_OK : E_FAIL;
 		}
 
-		if (SUCCEEDED(hr))
-		{
-			hr = CreateStreamOnHGlobal(Global, false, &Stream);
-		}
-
 		return hr;
+	}
+
+	HRESULT RecreateStream()
+	{
+		SafeRelease(Stream);
+		return CreateStreamOnHGlobal(Global, false, &Stream);
 	}
 };
 
+struct ZipList
+{
+	std::vector<ZipFile> m_list;
+	std::vector<ZipMemory> m_memory_list;
+
+
+};
+std::wstring ToWideString(std::string const& Text);
 std::string FromWideString(std::wstring const& Text);
-std::vector<ZipFile> ReadZip(std::wstring const& Filename);
+std::vector<std::shared_ptr<ZipFile>> ReadZip(std::wstring const& Filename);
 
 class Viewer : public BaseWindow<Viewer>
 {
@@ -82,7 +101,7 @@ public:
 	HRESULT Initialize(HINSTANCE hInst);
 	HRESULT CreateDeviceResources(HWND hwnd);
 	HRESULT LoadFile(std::wstring const& Path);
-	HRESULT LoadImage(int delta) noexcept;
+	HRESULT LoadImage(int delta) ;
 
 	virtual void OnSize(UINT Width, UINT Height) noexcept override;
 	virtual LRESULT OnPaint(HWND hwnd) noexcept override;
@@ -110,8 +129,9 @@ private:
 	float m_imageY{};
 	float m_scaleFactor = 1.0;
 
-	size_t m_currentPage{};
-	std::vector<ZipFile> m_zip_files;
+	size_t m_currentPage = -1;
+	std::vector<std::shared_ptr<ZipFile>> m_zip_files;
+	std::vector<HGLOBAL> m_zip_globals;
 
 };
 

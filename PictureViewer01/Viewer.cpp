@@ -1,17 +1,20 @@
 #include "Viewer.h"
 #include <windowsx.h>
+
+#include <sstream>
+
 Viewer::Viewer() :
-	m_bitmap(nullptr), 
+	m_bitmap(nullptr),
 	m_wic_factory(nullptr),
-	m_d2_factory(nullptr), 
+	m_d2_factory(nullptr),
 	m_brush(nullptr),
-	m_renderTarget(nullptr)
+	m_renderTarget(nullptr),
+	m_currentPage(-1)
 {
 }
 
 Viewer::~Viewer()
 {
-
 	SafeRelease(m_brush);
 	SafeRelease(m_bitmap);
 	SafeRelease(m_d2_factory);
@@ -128,7 +131,6 @@ HRESULT Viewer::CreateDeviceResources(HWND hwnd)
 			{
 				hr = m_renderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &m_brush);
 			}
-
 		}
 	}
 
@@ -230,13 +232,13 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 		{
 			OutputDebugStringW(L"Loaded file\n");
 		}
-		m_currentPage = 0;
+		m_currentPage = -1;
 
 	}
 	if (VirtualKey == VK_PRIOR)
 	{
 
-		HRESULT hr = this->LoadImage(+1);
+		HRESULT hr = this->LoadImage(-1);
 		if (SUCCEEDED(hr))
 		{
 			OutputDebugStringW(L"Loaded image\n");
@@ -246,7 +248,7 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 	if (VirtualKey == VK_NEXT)
 	{
 		// Page Down
-		HRESULT hr = this->LoadImage(-1);
+		HRESULT hr = this->LoadImage(+1);
 		if (SUCCEEDED(hr))
 		{
 			OutputDebugStringW(L"Loaded image\n");
@@ -308,7 +310,7 @@ HRESULT Viewer::LoadFile(std::wstring const& Path)
 	return hr;
 }
 
-HRESULT Viewer::LoadImage(int delta) noexcept
+HRESULT Viewer::LoadImage(int delta)
 {
 	HRESULT hr = S_OK;
 	IWICBitmapDecoder* decoder = nullptr;
@@ -323,35 +325,79 @@ HRESULT Viewer::LoadImage(int delta) noexcept
 
 	if (SUCCEEDED(hr))
 	{
-		int index = (m_currentPage + delta) % m_zip_files.size();
-		hr = m_wic_factory->CreateDecoderFromStream(m_zip_files[index].Stream, nullptr, WICDecodeMetadataCacheOnLoad, &decoder);
-		m_currentPage = m_currentPage + delta; // TODO: destructor is run when this scope ends.
+		std::wstringstream Out;
+		Out << L"Zip files " << m_zip_files.size() << L"\n";
+		Out << L"Delta " << delta << L"\n";
+		
+		OutputDebugStringW(Out.str().c_str());
+
+		if (m_currentPage + delta < 0)
+		{
+			m_currentPage = m_zip_files.size()-1;
+		}
+		else if (m_currentPage + delta > m_zip_files.size())
+		{
+			m_currentPage = 0;
+		}
+		else
+		{
+			Out.clear();
+			Out << L"Current page " << m_currentPage << L" delta " << delta << L" ";
+			m_currentPage += delta;
+			Out << m_currentPage << L"\n";
+		}
+
+
+		Out.clear();
+		Out << L"Current page" << m_currentPage << L"\n";
+		OutputDebugStringW(Out.str().c_str());
+		std::shared_ptr<ZipFile> item = m_zip_files.at(m_currentPage);
+		Out.clear();
+		Out << L"Name " << ToWideString(item->Name) << L"\n";
+		OutputDebugString(Out.str().c_str());
+
+		OutputDebugStringW(L"Create decoder from stream\n");
+		hr = item->RecreateStream();
+		if (SUCCEEDED(hr))
+		{
+			hr = m_wic_factory->CreateDecoderFromStream(
+				item->Stream,
+				nullptr,
+				WICDecodeMetadataCacheOnDemand,
+				&decoder);
+		}
+
 	}
 
 	IWICBitmapFrameDecode* frame = nullptr;
 	if (SUCCEEDED(hr))
 	{
+		OutputDebugStringW(L"Created decoder from Stream\n");
 		hr = decoder->GetFrame(0, &frame);
 	}
 
 	if (SUCCEEDED(hr))
 	{
+		OutputDebugStringW(L"GetFrame\n");
 		SafeRelease(m_wic_converter);
 		hr = m_wic_factory->CreateFormatConverter(&m_wic_converter);
 	}
 
 	if (SUCCEEDED(hr))
 	{
+		OutputDebugStringW(L"Create format converter\n");
 		hr = m_wic_converter->Initialize(frame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, nullptr, 0.0f, WICBitmapPaletteTypeCustom);
 	}
 
 	if (SUCCEEDED(hr))
 	{
+		OutputDebugStringW(L"Initialized converter\n");
 		hr = CreateDeviceResources(m_hwnd);
 	}
 
 	if (SUCCEEDED(hr))
 	{
+		OutputDebugStringW(L"Create device resources\n");
 		SafeRelease(m_bitmap);
 		hr = m_renderTarget->CreateBitmapFromWicBitmap(m_wic_converter, &m_bitmap);
 	}
@@ -429,7 +475,15 @@ void Viewer::OnMouseScrollWheel(short delta) noexcept
 	InvalidateRect(m_hwnd, nullptr, false);
 }
 
+std::wstring ToWideString(std::string const& Text)
+{
 
+	auto const Size = MultiByteToWideChar(CP_UTF8, 0, Text.c_str(), Text.size(), nullptr, 0);
+	std::wstring Result;
+	Result.resize(Size);
+	MultiByteToWideChar(CP_UTF8, 0, Text.c_str(), Text.size(), Result.data(), Result.size());
+	return Result;
+}
 std::string FromWideString(std::wstring const& Text)
 {
 	auto const Size = WideCharToMultiByte(CP_UTF8, 0, Text.c_str(), static_cast<int>(Text.size()), nullptr, 0, nullptr, nullptr);
@@ -439,9 +493,9 @@ std::string FromWideString(std::wstring const& Text)
 	return Result;
 }
 
-std::vector<ZipFile> ReadZip(std::wstring const& Filename)
+std::vector<std::shared_ptr<ZipFile>> ReadZip(std::wstring const& Filename)
 {
-	std::vector<ZipFile> Files;
+	std::vector<std::shared_ptr<ZipFile>> Files;
 
 	zip* archive = zip_open(FromWideString(Filename).c_str(), 0, nullptr);
 	if (!archive)
@@ -449,14 +503,10 @@ std::vector<ZipFile> ReadZip(std::wstring const& Filename)
 		OutputDebugStringW(L"Failed to open zip archive\n");
 		return {};
 	}
+
 	auto NumFiles = zip_get_num_files(archive);
-
-	std::wstring NumberOfFiles{};
-	NumberOfFiles += std::to_wstring(NumFiles);
-	NumberOfFiles += L"\n";
-	OutputDebugStringW(NumberOfFiles.c_str());
-
 	Files.reserve(NumFiles);
+
 	for (int i = 0; i < NumFiles; i++)
 	{
 		struct zip_stat stat;
@@ -465,10 +515,7 @@ std::vector<ZipFile> ReadZip(std::wstring const& Filename)
 		zip_file* File = zip_fopen_index(archive, i, 0);
 		if (File)
 		{
-			std::vector<char> buffer(sizeof(ZipFile));
-
-			ZipFile* ptr = new(buffer.data()) ZipFile(stat.name, static_cast<size_t>(stat.size));
-
+			std::shared_ptr<ZipFile> ptr = std::make_unique<ZipFile>(stat.name, static_cast<size_t>(stat.size));
 			std::vector<byte> Bytes;
 			Bytes.resize(ptr->Size);
 			zip_int64_t bytes_read = zip_fread(File, Bytes.data(), Bytes.size());
@@ -481,7 +528,7 @@ std::vector<ZipFile> ReadZip(std::wstring const& Filename)
 
 			if (SUCCEEDED(hr))
 			{
-				Files.emplace_back(std::move(*ptr));
+				Files.push_back(std::move(ptr));
 				zip_fclose(File);
 			}
 		}
