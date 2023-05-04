@@ -325,37 +325,21 @@ HRESULT Viewer::LoadImage(int delta)
 
 	if (SUCCEEDED(hr))
 	{
-		std::wstringstream Out;
-		Out << L"Zip files " << m_zip_files.size() << L"\n";
-		Out << L"Delta " << delta << L"\n";
+		m_currentPage += delta;
 		
-		OutputDebugStringW(Out.str().c_str());
 
-		if (m_currentPage + delta < 0)
+		if (m_currentPage < 0)
 		{
-			m_currentPage = m_zip_files.size()-1;
+			m_currentPage = m_zip_files.size() - 1;
 		}
-		else if (m_currentPage + delta > m_zip_files.size())
+		else if (m_currentPage >= m_zip_files.size())
 		{
 			m_currentPage = 0;
 		}
-		else
-		{
-			Out.clear();
-			Out << L"Current page " << m_currentPage << L" delta " << delta << L" ";
-			m_currentPage += delta;
-			Out << m_currentPage << L"\n";
-		}
 
-
-		Out.clear();
-		Out << L"Current page" << m_currentPage << L"\n";
-		OutputDebugStringW(Out.str().c_str());
+		
 		std::shared_ptr<ZipFile> item = m_zip_files.at(m_currentPage);
-		Out.clear();
-		Out << L"Name " << ToWideString(item->Name) << L"\n";
-		OutputDebugString(Out.str().c_str());
-
+		
 		OutputDebugStringW(L"Create decoder from stream\n");
 		hr = item->RecreateStream();
 		if (SUCCEEDED(hr))
