@@ -5,6 +5,7 @@
 #include <memory>
 
 #include <dwrite.h>
+#include <commdlg.h>
 
 constexpr wchar_t PICTURE[] = L"C:\\Code\\digits.png";
 
@@ -102,6 +103,7 @@ public:
 	HRESULT CreateDeviceResources(HWND hwnd);
 	HRESULT LoadFile(std::wstring const& Path);
 	HRESULT LoadImage(int delta) ;
+	HRESULT OpenArchive();
 
 	virtual void OnSize(UINT Width, UINT Height) noexcept override;
 	virtual LRESULT OnPaint(HWND hwnd) noexcept override;

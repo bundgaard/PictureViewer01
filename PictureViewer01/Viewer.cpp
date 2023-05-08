@@ -330,9 +330,9 @@ HRESULT Viewer::LoadImage(int delta)
 
 		if (m_currentPage < 0)
 		{
-			m_currentPage = m_zip_files.size() - 1;
+			m_currentPage = static_cast<int>(m_zip_files.size()) - 1;
 		}
-		else if (m_currentPage >= m_zip_files.size())
+		else if (m_currentPage >= static_cast<int>(m_zip_files.size()))
 		{
 			m_currentPage = 0;
 		}
@@ -389,6 +389,15 @@ HRESULT Viewer::LoadImage(int delta)
 	SafeRelease(decoder);
 	SafeRelease(frame);
 	return hr;
+}
+
+HRESULT Viewer::OpenArchive()
+{
+
+	// openFile dialog with only zip archive.
+	OPENFILENAME ofn;
+
+	return E_NOTIMPL;
 }
 
 void Viewer::OnSize(UINT Width, UINT Height) noexcept
