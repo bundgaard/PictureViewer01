@@ -127,3 +127,26 @@ inline BaseWindow<T>::~BaseWindow()
 {
 
 }
+//template<typename T>
+//HRESULT  BaseWindow<T>::Initialize(HINSTANCE hInst) noexcept {}
+//
+//template<typename T>
+//LRESULT BaseWindow<T>::OnPaint(HWND hwnd)noexcept {}
+//
+//template<typename T>
+//void BaseWindow<T>::OnSize(UINT Width, UINT Height)noexcept {}
+//
+//template<typename T>
+//void BaseWindow<T>::OnLButtonDown(float x, float y)noexcept {}
+//
+//template<typename T>
+//void BaseWindow<T>::OnLButtonUp(float x, float y)noexcept {}
+//
+//template<typename T>
+//void BaseWindow<T>::OnMouseMove(MouseMoveControl ctrl, float x, float y)noexcept {}
+//
+//template<typename T>
+//void BaseWindow<T>::OnMouseScrollWheel(short delta)noexcept {}
+//
+//template<typename T>
+//inline void BaseWindow<T>::OnKeyDown(UINT32 VirtualKey) noexcept {}
