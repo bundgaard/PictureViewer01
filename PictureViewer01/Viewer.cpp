@@ -2,7 +2,7 @@
 #include <windowsx.h>
 
 #include <sstream>
-
+#include "saferelease.h"
 Viewer::Viewer() :
 	m_bitmap(nullptr),
 	m_wic_factory(nullptr),

@@ -38,6 +38,9 @@
     <ClInclude Include="ZipReader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SafeRelease.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ZipExample.md" />

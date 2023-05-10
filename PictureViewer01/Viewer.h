@@ -1,7 +1,7 @@
 #pragma once
 #include "Application.h"
 #include "BaseWindow.h"
-
+#include "SafeRelease.h"
 #include <memory>
 
 #include <dwrite.h>
@@ -9,15 +9,7 @@
 
 constexpr wchar_t PICTURE[] = L"C:\\Code\\digits.png";
 
-template<typename T>
-inline void SafeRelease(T*& t)
-{
-	if (NULL != t)
-	{
-		t->Release();
-		t = nullptr;
-	}
-}
+
 
 struct ZipMemory
 {

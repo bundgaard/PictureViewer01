@@ -141,6 +141,7 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="BaseWindow.h" />
+    <ClInclude Include="SafeRelease.h" />
     <ClInclude Include="Viewer.h" />
     <ClInclude Include="ZipReader.h" />
   </ItemGroup>
