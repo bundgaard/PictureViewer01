@@ -134,6 +134,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="GraphicsManager.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Viewer.cpp" />
     <ClCompile Include="ZipReader.cpp" />
@@ -141,8 +142,12 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="BaseWindow.h" />
+    <ClInclude Include="COM.h" />
+    <ClInclude Include="Converter.h" />
+    <ClInclude Include="GraphicsManager.h" />
     <ClInclude Include="SafeRelease.h" />
     <ClInclude Include="Viewer.h" />
+    <ClInclude Include="ZipFile.h" />
     <ClInclude Include="ZipReader.h" />
   </ItemGroup>
   <ItemGroup>

@@ -37,6 +37,7 @@ public:
 	virtual void OnMouseMove(MouseMoveControl ctrl, float x, float y) noexcept = 0;
 	virtual void OnMouseScrollWheel(short delta) noexcept = 0;
 	virtual void OnKeyDown(UINT32 VirtualKey) noexcept = 0;
+	virtual void OnChar(wchar_t KeyCode, short RepeatCount) noexcept = 0;
 
 
 	[[nodiscard]] virtual LRESULT OnNcCreate(WPARAM wparam, LPARAM lparam) noexcept
@@ -94,6 +95,15 @@ public:
 		{
 			return OnPaint(hwnd);
 		}
+		case WM_CHAR:
+		{
+			OnChar(
+				(TCHAR)(wparam),
+				(int)(short)LOWORD(lparam)
+			);
+			break;
+		}
+
 		default:
 			return DefWindowProcW(hwnd, msg, wparam, lparam);
 		}
