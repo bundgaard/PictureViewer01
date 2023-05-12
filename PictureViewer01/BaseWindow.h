@@ -93,7 +93,11 @@ public:
 		}
 		case WM_PAINT:
 		{
-			return OnPaint(hwnd);
+			PAINTSTRUCT ps;
+			BeginPaint(hwnd, &ps);
+			auto Result = OnPaint(hwnd);
+			EndPaint(hwnd, &ps);
+			return Result;
 		}
 		case WM_CHAR:
 		{

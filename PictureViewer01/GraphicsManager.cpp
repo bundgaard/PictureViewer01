@@ -1,6 +1,7 @@
 #include "GraphicsManager.h"
 #include <wincodec.h>
 #include <dwrite.h>
+#include <string>
 
 GraphicsManager::~GraphicsManager()
 {
@@ -172,4 +173,109 @@ HRESULT GraphicsManager::CreateDeviceResources(HWND hwnd)
 	}
 
 	return hr;
+}
+
+
+HRESULT GraphicsManager::CreateBitmapFromIStream(IStream* pStream)
+{
+	HRESULT hr = S_OK;
+	IWICBitmapDecoder* decoder = nullptr;
+
+	ReleaseBitmap();
+	ReleaseConverter();
+
+	hr = WICFactory()->CreateDecoderFromStream(
+		pStream,
+		nullptr,
+		WICDecodeMetadataCacheOnDemand,
+		&decoder);
+
+
+
+	IWICBitmapFrameDecode* frame = nullptr;
+	if (SUCCEEDED(hr))
+	{
+		OutputDebugStringW(L"Created decoder from Stream\n");
+		hr = decoder->GetFrame(0, &frame);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		OutputDebugStringW(L"GetFrame\n");
+		CreateFormatConverter();
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		OutputDebugStringW(L"Create format converter\n");
+		hr = Converter()->Initialize(frame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, nullptr, 0.0f, WICBitmapPaletteTypeCustom);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		OutputDebugStringW(L"Initialized converter\n");
+		hr = CreateDeviceResources(mHwnd);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		OutputDebugStringW(L"Create device resources\n");
+		CreateBitmapFromWicBitmap();
+	}
+
+	SafeRelease(decoder);
+	SafeRelease(frame);
+	return hr;
+}
+
+HRESULT GraphicsManager::CreateBitmapFromFile(std::wstring const& Filepath)
+{
+	HRESULT hr = S_OK;
+	IWICBitmapDecoder* decoder = nullptr;
+	if (SUCCEEDED(hr))
+	{
+		hr = WICFactory()->CreateDecoderFromFilename(Filepath.c_str(), nullptr, GENERIC_READ, WICDecodeMetadataCacheOnDemand, &decoder);
+	}
+
+	IWICBitmapFrameDecode* frame = nullptr;
+	if (SUCCEEDED(hr))
+	{
+		hr = decoder->GetFrame(0, &frame);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+
+		hr = CreateFormatConverter();
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		hr = Converter()->Initialize(frame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, nullptr, 0.0f, WICBitmapPaletteTypeCustom);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		hr = CreateDeviceResources(mHwnd);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		hr = CreateBitmapFromWicBitmap();
+	}
+
+	SafeRelease(decoder);
+	SafeRelease(frame);
+	return hr;
+}
+
+void GraphicsManager::Resize(int Width, int Height)
+{
+	if (RenderTarget() != nullptr)
+	{
+		if (FAILED(RenderTarget()->Resize(D2D1::SizeU(Width, Height))))
+		{
+			ReleaseDeviceResources();
+		}
+	}
 }

@@ -4,13 +4,15 @@
 #include <zip.h>
 
 #include <sstream>
+#include <array>
+
 #include "BaseWindow.h"
 #include "SafeRelease.h"
 #include "ZipFile.h"
 #include "Converter.h"
 #include "GraphicsManager.h"
 
-Viewer::Viewer(GraphicsManager& graphicManager) 
+Viewer::Viewer(GraphicsManager& graphicManager)
 	: mGraphicManager(graphicManager)
 	, m_currentPage(-1)
 {
@@ -43,7 +45,7 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 
 		hr = RegisterClassEx(&wc) ? S_OK : E_FAIL;
 	}
-	
+
 	if (SUCCEEDED(hr))
 	{
 		OutputDebugStringW(L"Created class\n");
@@ -59,7 +61,7 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 		mGraphicManager.Initialize(hwnd);
 		hr = hwnd ? S_OK : E_FAIL;
 	}
-	
+
 	if (SUCCEEDED(hr))
 	{
 		OutputDebugStringW(L"Created Window\n");
@@ -81,77 +83,77 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 {
 	HRESULT hr = S_OK;
 	PAINTSTRUCT ps{};
-	if (BeginPaint(hwnd, &ps))
+
+	hr = mGraphicManager.CreateDeviceResources(hwnd);
+	if (SUCCEEDED(hr) && !(mGraphicManager.CheckWindowState() & D2D1_WINDOW_STATE_OCCLUDED))
 	{
-		hr = mGraphicManager.CreateDeviceResources(hwnd);
-		if (SUCCEEDED(hr) && !(mGraphicManager.CheckWindowState() & D2D1_WINDOW_STATE_OCCLUDED))
+		mGraphicManager.RenderTarget()->BeginDraw();
+		mGraphicManager.RenderTarget()->SetTransform(D2D1::IdentityMatrix());
+		mGraphicManager.RenderTarget()->Clear();
+
+		auto color = mGraphicManager.Brush()->GetColor();
+		mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::PaleVioletRed));
+		mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, 640.f, 480.f), mGraphicManager.Brush());
+		mGraphicManager.Brush()->SetColor(color);
+
+		mGraphicManager.RenderTarget()->DrawLine(D2D1::Point2F(0.0f, 0.0f), D2D1::Point2F(100.0f, 100.0f), mGraphicManager.Brush());
+
+		if (mGraphicManager.Converter() && !mGraphicManager.Bitmap())
 		{
-			mGraphicManager.RenderTarget()->BeginDraw();
-			mGraphicManager.RenderTarget()->SetTransform(D2D1::IdentityMatrix());
-			mGraphicManager.RenderTarget()->Clear();
-
-			auto color = mGraphicManager.Brush()->GetColor();
-			mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::PaleVioletRed));
-			mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, 640.f, 480.f), mGraphicManager.Brush());
-			mGraphicManager.Brush()->SetColor(color);
-
-			mGraphicManager.RenderTarget()->DrawLine(D2D1::Point2F(0.0f, 0.0f), D2D1::Point2F(100.0f, 100.0f), mGraphicManager.Brush());
-
-			if (mGraphicManager.Converter() && !mGraphicManager.Bitmap())
-			{
-				auto ptr = mGraphicManager.Bitmap();
-				mGraphicManager.RenderTarget()->CreateBitmapFromWicBitmap(mGraphicManager.Converter(), &ptr);
-			}
-			std::wstring PressSpaceText = L"Press [SPACE BAR] to show the picture.";
-			IDWriteTextLayout* layout = nullptr;
-			if (SUCCEEDED(hr))
-			{
-				// TODO: move into GraphicManager
-				hr = mGraphicManager.WriteFactory()->CreateTextLayout(PressSpaceText.c_str(), static_cast<UINT32>(PressSpaceText.size()), mGraphicManager.TextFormat(), 320.f, 240.f, &layout);
-			}
-			DWRITE_TEXT_METRICS metric{};
-			if (SUCCEEDED(hr))
-			{
-				hr = layout->GetMetrics(&metric);
-			}
-
-			if (SUCCEEDED(hr))
-			{
-				auto color = mGraphicManager.Brush()->GetColor();
-				mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
-				mGraphicManager.RenderTarget()->DrawTextLayout(D2D1::Point2F((640.0f - metric.width) / 2.0f, (480.0f - metric.height) / 2.0f), layout, mGraphicManager.Brush(), D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT);
-				mGraphicManager.Brush()->SetColor(color);
-			}
-			SafeRelease(layout);
-			if (mGraphicManager.Bitmap())
-			{
-				auto ClientSize = mGraphicManager.RenderTarget()->GetSize();
-				auto BitmapSize = mGraphicManager.Bitmap()->GetSize();
-				auto WidthRatio = std::abs(BitmapSize.width / ClientSize.width); // TODO need to fix this so it doesn't scale when resizing app
-				auto HeightRatio = std::abs(BitmapSize.height / ClientSize.height);
-				auto Ratio = GetImageRatio(BitmapSize.width, BitmapSize.height);
-				Ratio *= m_scaleFactor;
-				auto ClientRect = D2D1::RectF(m_imageX, m_imageY, m_imageX + BitmapSize.width, m_imageY + BitmapSize.height);
-				D2D1_MATRIX_3X2_F transform{};
-				mGraphicManager.RenderTarget()->GetTransform(&transform);
-				mGraphicManager.RenderTarget()->SetTransform(D2D1::Matrix3x2F::Scale(m_scaleFactor, m_scaleFactor));
-				mGraphicManager.RenderTarget()->DrawBitmap(mGraphicManager.Bitmap(), ClientRect);
-				mGraphicManager.RenderTarget()->SetTransform(transform);
-			}
-			hr = mGraphicManager.RenderTarget()->EndDraw();
-			if (hr == D2DERR_RECREATE_TARGET)
-			{
-				mGraphicManager.ReleaseDeviceResources();
-				hr = InvalidateRect(hwnd, nullptr, true) ? S_OK : E_FAIL;
-			}
+			auto ptr = mGraphicManager.Bitmap();
+			mGraphicManager.RenderTarget()->CreateBitmapFromWicBitmap(mGraphicManager.Converter(), &ptr);
 		}
-		EndPaint(hwnd, &ps);
+		std::wstring PressSpaceText = L"Press [SPACE BAR] to show the picture.";
+		IDWriteTextLayout* layout = nullptr;
+		if (SUCCEEDED(hr))
+		{
+			// TODO: move into GraphicManager
+			hr = mGraphicManager.WriteFactory()->CreateTextLayout(PressSpaceText.c_str(), static_cast<UINT32>(PressSpaceText.size()), mGraphicManager.TextFormat(), 320.f, 240.f, &layout);
+		}
+		DWRITE_TEXT_METRICS metric{};
+		if (SUCCEEDED(hr))
+		{
+			hr = layout->GetMetrics(&metric);
+		}
+
+		if (SUCCEEDED(hr))
+		{
+			auto color = mGraphicManager.Brush()->GetColor();
+			mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
+			mGraphicManager.RenderTarget()->DrawTextLayout(D2D1::Point2F((640.0f - metric.width) / 2.0f, (480.0f - metric.height) / 2.0f), layout, mGraphicManager.Brush(), D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT);
+			mGraphicManager.Brush()->SetColor(color);
+		}
+		SafeRelease(layout);
+		if (mGraphicManager.Bitmap())
+		{
+			auto ClientSize = mGraphicManager.RenderTarget()->GetSize();
+			auto BitmapSize = mGraphicManager.Bitmap()->GetSize();
+			auto WidthRatio = std::abs(BitmapSize.width / ClientSize.width); // TODO need to fix this so it doesn't scale when resizing app
+			auto HeightRatio = std::abs(BitmapSize.height / ClientSize.height);
+			auto Ratio = GetImageRatio(BitmapSize.width, BitmapSize.height);
+			Ratio *= m_scaleFactor;
+			auto ClientRect = D2D1::RectF(m_imageX, m_imageY, m_imageX + BitmapSize.width, m_imageY + BitmapSize.height);
+			D2D1_MATRIX_3X2_F transform{};
+			mGraphicManager.RenderTarget()->GetTransform(&transform);
+			mGraphicManager.RenderTarget()->SetTransform(D2D1::Matrix3x2F::Scale(m_scaleFactor, m_scaleFactor));
+			mGraphicManager.RenderTarget()->DrawBitmap(mGraphicManager.Bitmap(), ClientRect);
+			mGraphicManager.RenderTarget()->SetTransform(transform);
+		}
+		hr = mGraphicManager.RenderTarget()->EndDraw();
+		if (hr == D2DERR_RECREATE_TARGET)
+		{
+			mGraphicManager.ReleaseDeviceResources();
+			hr = InvalidateRect(hwnd, nullptr, true) ? S_OK : E_FAIL;
+		}
 	}
 	return SUCCEEDED(hr) ? S_OK : E_FAIL;
 }
 
 void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 {
+	std::wstringstream Out;
+	Out << std::hex << VirtualKey << L"\n";
+	OutputDebugStringW(Out.str().c_str());
 	if (VirtualKey == VK_SPACE)
 	{
 		m_imageX = m_imageY = 0;
@@ -174,12 +176,12 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 		{
 			OutputDebugStringW(L"Loaded image\n");
 		}
-		
+
 	}
-	
+
 	if (VirtualKey == VK_NEXT) // Page Down
 	{
-		
+
 		HRESULT hr = this->LoadImage(+1);
 		if (SUCCEEDED(hr))
 		{
@@ -195,9 +197,13 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 		mGraphicManager.ReleaseConverter();
 		mGraphicManager.ReleaseDeviceResources();
 	}
-	if ((wchar_t)VirtualKey == L'o')
+	if ( GetKeyState(VK_CONTROL) & 0x0800 &&  VirtualKey == 0x4f)
 	{
-		OutputDebugStringW(L"Keydown test for ctrl + o\n");
+		HRESULT hr = OpenArchive();
+		if (SUCCEEDED(hr))
+		{
+			// ReadZip()
+		}
 	}
 	InvalidateRect(m_hwnd, nullptr, true);
 }
@@ -206,62 +212,21 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 HRESULT Viewer::LoadFile(std::wstring const& Path)
 {
 	HRESULT hr = S_OK;
-	IWICBitmapDecoder* decoder = nullptr;
-	if (SUCCEEDED(hr))
-	{
-		hr = mGraphicManager.WICFactory()->CreateDecoderFromFilename(Path.c_str(), nullptr, GENERIC_READ, WICDecodeMetadataCacheOnDemand, &decoder);
-	}
-
-	IWICBitmapFrameDecode* frame = nullptr;
-	if (SUCCEEDED(hr))
-	{
-		hr = decoder->GetFrame(0, &frame);
-	}
-
-	if (SUCCEEDED(hr))
-	{
-		
-		hr = mGraphicManager.CreateFormatConverter();
-	}
-
-	if (SUCCEEDED(hr))
-	{
-		hr = mGraphicManager.Converter()->Initialize(frame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, nullptr, 0.0f, WICBitmapPaletteTypeCustom);
-	}
-
-	if (SUCCEEDED(hr))
-	{
-		hr = mGraphicManager.CreateDeviceResources(m_hwnd);
-	}
-
-	if (SUCCEEDED(hr))
-	{
-		hr = mGraphicManager.CreateBitmapFromWicBitmap();
-	}
-
-	SafeRelease(decoder);
-	SafeRelease(frame);
-
+	mGraphicManager.CreateBitmapFromFile(Path);
 	return hr;
 }
 
 HRESULT Viewer::LoadImage(int delta)
 {
 	HRESULT hr = S_OK;
-	IWICBitmapDecoder* decoder = nullptr;
-
-	mGraphicManager.ReleaseBitmap();
-	mGraphicManager.ReleaseConverter();
-
 	if (SUCCEEDED(hr))
 	{
 		hr = m_zip_files.size() > 0 ? S_OK : E_FAIL;
 	}
-
 	if (SUCCEEDED(hr))
 	{
 		m_currentPage += delta;
-		
+
 
 		if (m_currentPage < 0)
 		{
@@ -272,56 +237,17 @@ HRESULT Viewer::LoadImage(int delta)
 			m_currentPage = 0;
 		}
 
-		
+
 		std::unique_ptr<ZipFile>& item = m_zip_files.at(m_currentPage);
-		
+
 		OutputDebugStringW(L"Create decoder from stream\n");
 		hr = item->RecreateStream();
 		if (SUCCEEDED(hr))
 		{
-			hr = mGraphicManager.WICFactory()->CreateDecoderFromStream(
-				item->Stream,
-				nullptr,
-				WICDecodeMetadataCacheOnDemand,
-				&decoder);
+			hr = mGraphicManager.CreateBitmapFromIStream(item->Stream);
 		}
-
 	}
 
-	IWICBitmapFrameDecode* frame = nullptr;
-	if (SUCCEEDED(hr))
-	{
-		OutputDebugStringW(L"Created decoder from Stream\n");
-		hr = decoder->GetFrame(0, &frame);
-	}
-
-	if (SUCCEEDED(hr))
-	{
-		OutputDebugStringW(L"GetFrame\n");
-		mGraphicManager.CreateFormatConverter();
-	}
-
-	if (SUCCEEDED(hr))
-	{
-		OutputDebugStringW(L"Create format converter\n");
-		hr = mGraphicManager.Converter()->Initialize(frame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, nullptr, 0.0f, WICBitmapPaletteTypeCustom);
-	}
-
-	if (SUCCEEDED(hr))
-	{
-		OutputDebugStringW(L"Initialized converter\n");
-		hr = mGraphicManager.CreateDeviceResources(m_hwnd);
-	}
-
-	if (SUCCEEDED(hr))
-	{
-		OutputDebugStringW(L"Create device resources\n");
-		mGraphicManager.CreateBitmapFromWicBitmap();
-		
-	}
-
-	SafeRelease(decoder);
-	SafeRelease(frame);
 	return hr;
 }
 
@@ -330,7 +256,10 @@ HRESULT Viewer::OpenArchive()
 
 	// openFile dialog with only zip archive.
 	OPENFILENAME ofn;
-
+	ofn.hwndOwner = m_hwnd;
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hInstance = (HINSTANCE)GetModuleHandleW(0);
+	
 	return E_NOTIMPL;
 }
 
@@ -340,13 +269,7 @@ void Viewer::OnSize(UINT Width, UINT Height) noexcept
 	wchar_t Buf[64] = { 0 };
 	swprintf(Buf, 64, L"%u,%u\n", Width, Height);
 	OutputDebugStringW(Buf);
-	if (mGraphicManager.RenderTarget() != nullptr)
-	{
-		if (FAILED(mGraphicManager.RenderTarget()->Resize(D2D1::SizeU(Width, Height))))
-		{
-			mGraphicManager.ReleaseDeviceResources();
-		}
-	}
+	mGraphicManager.Resize(Width, Height);
 }
 
 void Viewer::OnMouseMove(MouseMoveControl ctrl, float x, float y) noexcept
@@ -402,16 +325,28 @@ void Viewer::OnMouseScrollWheel(short delta) noexcept
 
 void Viewer::OnChar(wchar_t KeyCode, short RepeatCount) noexcept
 {
+	if (GetKeyState(VK_CONTROL) & 0x0800 )
+	{
+		if (KeyCode == L'o')
+			OutputDebugStringW(L"FoobarBish");
+	}
 }
 
 void Viewer::Start()
 {
+	/*std::array<ACCEL, 1> aclTables;
+	ACCEL acl0{ .fVirt = FCONTROL, .key = L'o' };
+	aclTables[0] = acl0;*/
+
+//	auto hAcceleratorTable = CreateAcceleratorTableW(aclTables.data(), aclTables.size());
 	MSG msg{};
 	while (GetMessage(&msg, nullptr, 0, 0) != 0)
 	{
+		//TranslateAcceleratorW(m_hwnd, hAcceleratorTable, &msg);
 		TranslateMessage(&msg);
 		DispatchMessageW(&msg);
 	}
+	// DestroyAcceleratorTable(hAcceleratorTable);
 }
 
 

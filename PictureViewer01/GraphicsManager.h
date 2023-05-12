@@ -2,7 +2,7 @@
 
 #include <Windows.h>
 #include "SafeRelease.h"
-
+#include <string>
 #include <d2d1.h>
 
 struct IWICImagingFactory;
@@ -39,6 +39,10 @@ public:
 	HRESULT CreateBitmapFromWicBitmap();
 	HRESULT CreateDeviceResources(HWND hwnd);
 	HRESULT CreateFormatConverter();
+	HRESULT CreateBitmapFromIStream(IStream* pStream);
+	HRESULT CreateBitmapFromFile(std::wstring const& Filepath);
+	
+	void Resize(int Width, int Height);
 
 	D2D1_WINDOW_STATE CheckWindowState() const;
 
