@@ -1,3 +1,4 @@
+
 #include "Viewer.h"
 #include <windowsx.h>
 
@@ -11,6 +12,24 @@
 #include "ZipFile.h"
 #include "Converter.h"
 #include "GraphicsManager.h"
+
+void Log(const wchar_t* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+
+	std::wstring Text;
+	Text.resize(_vscwprintf(fmt, args));
+	_vsnwprintf_s(Text.data(), Text.size(), _TRUNCATE, fmt, args);
+	OutputDebugStringW(Text.c_str());
+	va_end(args);
+}
+
+#ifdef _DEBUG
+#define LOG(fmt, ...) Log(fmt, __VA_ARGS__)
+#else 
+#define LOG(fmt, ...)
+#endif
 
 Viewer::Viewer(GraphicsManager& graphicManager)
 	: mGraphicManager(graphicManager)
@@ -96,44 +115,32 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 		mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, 640.f, 480.f), mGraphicManager.Brush());
 		mGraphicManager.Brush()->SetColor(color);
 
-		mGraphicManager.RenderTarget()->DrawLine(D2D1::Point2F(0.0f, 0.0f), D2D1::Point2F(100.0f, 100.0f), mGraphicManager.Brush());
-
 		if (mGraphicManager.Converter() && !mGraphicManager.Bitmap())
 		{
 			auto ptr = mGraphicManager.Bitmap();
 			mGraphicManager.RenderTarget()->CreateBitmapFromWicBitmap(mGraphicManager.Converter(), &ptr);
 		}
-		std::wstring PressSpaceText = L"Press [SPACE BAR] to show the picture.";
-		IDWriteTextLayout* layout = nullptr;
-		if (SUCCEEDED(hr))
-		{
-			// TODO: move into GraphicManager
-			hr = mGraphicManager.WriteFactory()->CreateTextLayout(PressSpaceText.c_str(), static_cast<UINT32>(PressSpaceText.size()), mGraphicManager.TextFormat(), 320.f, 240.f, &layout);
-		}
-		DWRITE_TEXT_METRICS metric{};
-		if (SUCCEEDED(hr))
-		{
-			hr = layout->GetMetrics(&metric);
-		}
 
-		if (SUCCEEDED(hr))
-		{
-			auto color = mGraphicManager.Brush()->GetColor();
-			mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
-			mGraphicManager.RenderTarget()->DrawTextLayout(D2D1::Point2F((640.0f - metric.width) / 2.0f, (480.0f - metric.height) / 2.0f), layout, mGraphicManager.Brush(), D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT);
-			mGraphicManager.Brush()->SetColor(color);
-		}
-		SafeRelease(layout);
+		std::wstring OpenFileText = L"[CTRL] + [o] - To open archive.";
+		mGraphicManager.DrawTextCentered(OpenFileText, 50);
+		mGraphicManager.DrawTextCentered(L"PageUp and PageDown to move back and forth between images in archive.", 75);
+
 		if (mGraphicManager.Bitmap())
 		{
 			auto ClientSize = mGraphicManager.RenderTarget()->GetSize();
 			auto BitmapSize = mGraphicManager.Bitmap()->GetSize();
+
 			auto WidthRatio = std::abs(BitmapSize.width / ClientSize.width); // TODO need to fix this so it doesn't scale when resizing app
 			auto HeightRatio = std::abs(BitmapSize.height / ClientSize.height);
+			
 			auto Ratio = GetImageRatio(BitmapSize.width, BitmapSize.height);
+			
 			Ratio *= m_scaleFactor;
+			
 			auto ClientRect = D2D1::RectF(m_imageX, m_imageY, m_imageX + BitmapSize.width, m_imageY + BitmapSize.height);
+			
 			D2D1_MATRIX_3X2_F transform{};
+			
 			mGraphicManager.RenderTarget()->GetTransform(&transform);
 			mGraphicManager.RenderTarget()->SetTransform(D2D1::Matrix3x2F::Scale(m_scaleFactor, m_scaleFactor));
 			mGraphicManager.RenderTarget()->DrawBitmap(mGraphicManager.Bitmap(), ClientRect);
@@ -151,30 +158,38 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 
 void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 {
+#ifdef DEBUG || _DEBUG
+
 	std::wstringstream Out;
 	Out << std::hex << VirtualKey << L"\n";
 	OutputDebugStringW(Out.str().c_str());
-	if (VirtualKey == VK_SPACE)
-	{
-		m_imageX = m_imageY = 0;
-		m_scaleFactor = 1.0f;
-		m_zip_files.clear();
-		m_zip_files = ReadZip(L"C:\\Code\\pics.zip");
-		HRESULT hr = this->LoadFile(PICTURE);
-		if (SUCCEEDED(hr))
-		{
-			OutputDebugStringW(L"Loaded file\n");
-		}
-		m_currentPage = -1;
-
-	}
+#endif
+	//	if (VirtualKey == VK_SPACE)
+	//	{
+	//		m_imageX = m_imageY = 0;
+	//		m_scaleFactor = 1.0f;
+	//		m_zip_files.clear();
+	//#if 0
+	//		m_zip_files = ReadZip(L"C:\\Temp\\7901387a-b652-496f-b378-08c69c34f88f.zip"); //  ReadZip(L"C:\\Code\\pics.zip");
+	//#else
+	//		m_zip_files = ReadZip(L"C:\\Code\\pics.zip");
+	//#endif
+	//		
+	//		HRESULT hr = this->LoadFile(PICTURE);
+	//		if (SUCCEEDED(hr))
+	//		{
+	//			Log(L"Loaded file\n");
+	//		}
+	//		m_currentPage = -1;
+	//
+	//	}
 	if (VirtualKey == VK_PRIOR) // PageUp
 	{
 
 		HRESULT hr = this->LoadImage(-1);
 		if (SUCCEEDED(hr))
 		{
-			OutputDebugStringW(L"Loaded image\n");
+			LOG(L"Loaded image\n");
 		}
 
 	}
@@ -185,24 +200,26 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 		HRESULT hr = this->LoadImage(+1);
 		if (SUCCEEDED(hr))
 		{
-			OutputDebugStringW(L"Loaded image\n");
+			LOG(L"Loaded image\n");
 		}
 	}
 
 	if (VirtualKey == VK_ESCAPE)
 	{
-		OutputDebugStringW(L"ESCAPE pressed\n");
+		LOG(L"ESCAPE pressed\n");
 		m_imageX = m_imageY = 0;
 		m_zip_files.clear();
 		mGraphicManager.ReleaseConverter();
 		mGraphicManager.ReleaseDeviceResources();
 	}
-	if ( GetKeyState(VK_CONTROL) & 0x0800 &&  VirtualKey == 0x4f)
+
+
+	if (GetKeyState(VK_CONTROL) & 0x0800 && VirtualKey == 0x4f) // o
 	{
 		HRESULT hr = OpenArchive();
 		if (SUCCEEDED(hr))
 		{
-			// ReadZip()
+			this->LoadImage(+1);
 		}
 	}
 	InvalidateRect(m_hwnd, nullptr, true);
@@ -240,7 +257,7 @@ HRESULT Viewer::LoadImage(int delta)
 
 		std::unique_ptr<ZipFile>& item = m_zip_files.at(m_currentPage);
 
-		OutputDebugStringW(L"Create decoder from stream\n");
+		LOG(L"Create decoder from stream\n");
 		hr = item->RecreateStream();
 		if (SUCCEEDED(hr))
 		{
@@ -255,20 +272,38 @@ HRESULT Viewer::OpenArchive()
 {
 
 	// openFile dialog with only zip archive.
-	OPENFILENAME ofn;
+	OPENFILENAME ofn{};
+	wchar_t szFile[MAX_PATH] = { 0 };
+
 	ofn.hwndOwner = m_hwnd;
 	ofn.lStructSize = sizeof(ofn);
 	ofn.hInstance = (HINSTANCE)GetModuleHandleW(0);
-	
-	return E_NOTIMPL;
+	ofn.lpstrFile = szFile;
+	ofn.lpstrFile[0] = L'\0';
+	ofn.nMaxFile = sizeof(szFile);
+	ofn.lpstrFilter = L"ZIP Archive\0*.zip";
+	ofn.lpstrTitle = nullptr;
+	ofn.nMaxFileTitle = 0;
+	ofn.lpstrInitialDir = nullptr;
+	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+	HRESULT hr = GetOpenFileNameW(&ofn) ? S_OK : E_FAIL;
+	if (SUCCEEDED(hr))
+	{
+		LOG(L"Received %s\n", ofn.lpstrFile);
+
+		m_imageX = m_imageY = 0;
+		m_scaleFactor = 1.0f;
+		m_zip_files.clear();
+		m_zip_files = ReadZip(ofn.lpstrFile);
+		m_currentPage = -1;
+	}
+
+	return hr;
 }
 
 void Viewer::OnSize(UINT Width, UINT Height) noexcept
 {
-	OutputDebugStringW(L"Received WM_SIZE\n");
-	wchar_t Buf[64] = { 0 };
-	swprintf(Buf, 64, L"%u,%u\n", Width, Height);
-	OutputDebugStringW(Buf);
+	LOG(L"Received WM_SIZE %u,%u\n", Width, Height);
 	mGraphicManager.Resize(Width, Height);
 }
 
@@ -317,36 +352,24 @@ void Viewer::OnMouseScrollWheel(short delta) noexcept
 	{
 		m_scaleFactor /= 1.1f;
 	}
-	wchar_t Buf[64] = { 0 };
-	swprintf(Buf, 64, L"Zoom: %f\n", (1.0f - m_scaleFactor) * 100.f);
-	OutputDebugStringW(Buf);
+
+	LOG(L"Zoom %f\n", (1.0f - m_scaleFactor) * 100.f);
+
 	InvalidateRect(m_hwnd, nullptr, false);
 }
 
 void Viewer::OnChar(wchar_t KeyCode, short RepeatCount) noexcept
 {
-	if (GetKeyState(VK_CONTROL) & 0x0800 )
-	{
-		if (KeyCode == L'o')
-			OutputDebugStringW(L"FoobarBish");
-	}
 }
 
 void Viewer::Start()
 {
-	/*std::array<ACCEL, 1> aclTables;
-	ACCEL acl0{ .fVirt = FCONTROL, .key = L'o' };
-	aclTables[0] = acl0;*/
-
-//	auto hAcceleratorTable = CreateAcceleratorTableW(aclTables.data(), aclTables.size());
 	MSG msg{};
 	while (GetMessage(&msg, nullptr, 0, 0) != 0)
 	{
-		//TranslateAcceleratorW(m_hwnd, hAcceleratorTable, &msg);
 		TranslateMessage(&msg);
 		DispatchMessageW(&msg);
 	}
-	// DestroyAcceleratorTable(hAcceleratorTable);
 }
 
 
@@ -358,7 +381,7 @@ std::vector<std::unique_ptr<ZipFile>> Viewer::ReadZip(std::wstring const& Filena
 	zip* archive = zip_open(FromWideString(Filename).c_str(), 0, nullptr);
 	if (!archive)
 	{
-		OutputDebugStringW(L"Failed to open zip archive\n");
+		Log(L"Failed to open zip archive\n");
 		return {};
 	}
 

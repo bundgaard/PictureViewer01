@@ -125,6 +125,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -134,6 +135,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CommonDialog.cpp" />
     <ClCompile Include="GraphicsManager.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Viewer.cpp" />
@@ -143,6 +145,7 @@
     <ClInclude Include="Application.h" />
     <ClInclude Include="BaseWindow.h" />
     <ClInclude Include="COM.h" />
+    <ClInclude Include="CommonDialog.h" />
     <ClInclude Include="Converter.h" />
     <ClInclude Include="GraphicsManager.h" />
     <ClInclude Include="SafeRelease.h" />

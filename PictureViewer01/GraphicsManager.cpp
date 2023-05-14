@@ -279,3 +279,58 @@ void GraphicsManager::Resize(int Width, int Height)
 		}
 	}
 }
+
+void GraphicsManager::DrawText(std::wstring const& Text, float x, float y, D2D1::ColorF color)
+{
+	HRESULT hr = S_OK;
+	IDWriteTextLayout* layout = nullptr;
+	D2D1_SIZE_F Size = RenderTarget()->GetSize();
+
+	if (SUCCEEDED(hr))
+	{
+		hr = WriteFactory()->CreateTextLayout(Text.c_str(), static_cast<UINT32>(Text.size()), TextFormat(), Size.width, Size.height, &layout);
+	}
+	
+	DWRITE_TEXT_METRICS metric{};
+	if (SUCCEEDED(hr))
+	{
+		hr = layout->GetMetrics(&metric);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		auto oldColor = Brush()->GetColor();
+		Brush()->SetColor(color);
+		RenderTarget()->DrawTextLayout(D2D1::Point2F(x, y), layout, Brush(), D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT);
+		Brush()->SetColor(oldColor);
+	}
+	SafeRelease(layout);
+}
+
+void GraphicsManager::DrawTextCentered(std::wstring const& Text, float y, D2D1::ColorF color)
+{
+	HRESULT hr = S_OK;
+	IDWriteTextLayout* layout = nullptr;
+	D2D1_SIZE_F Size = RenderTarget()->GetSize();
+
+	if (SUCCEEDED(hr))
+	{
+		hr = WriteFactory()->CreateTextLayout(Text.c_str(), static_cast<UINT32>(Text.size()), TextFormat(), Size.width, Size.height, &layout);
+	}
+
+	DWRITE_TEXT_METRICS metric{};
+	if (SUCCEEDED(hr))
+	{
+		hr = layout->GetMetrics(&metric);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		auto oldColor = Brush()->GetColor();
+		Brush()->SetColor(color);
+		RenderTarget()->DrawTextLayout(D2D1::Point2F((Size.width - metric.width) / 2.0f, y), layout, Brush(), D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT);
+		Brush()->SetColor(oldColor);
+	}
+	SafeRelease(layout);
+
+}

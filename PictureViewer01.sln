@@ -5,6 +5,8 @@ VisualStudioVersion = 17.5.33530.505
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PictureViewer01", "PictureViewer01\PictureViewer01.vcxproj", "{354B0609-D2E6-442E-B850-C9122D92EDBA}"
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "PhotoViewer01 Setup", "PhotoViewer01 Setup\PhotoViewer01 Setup.vdproj", "{46490F45-7A91-47D8-8A12-D55672641070}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,10 @@ Global
 		{354B0609-D2E6-442E-B850-C9122D92EDBA}.Release|x64.Build.0 = Release|x64
 		{354B0609-D2E6-442E-B850-C9122D92EDBA}.Release|x86.ActiveCfg = Release|Win32
 		{354B0609-D2E6-442E-B850-C9122D92EDBA}.Release|x86.Build.0 = Release|Win32
+		{46490F45-7A91-47D8-8A12-D55672641070}.Debug|x64.ActiveCfg = Debug
+		{46490F45-7A91-47D8-8A12-D55672641070}.Debug|x86.ActiveCfg = Debug
+		{46490F45-7A91-47D8-8A12-D55672641070}.Release|x64.ActiveCfg = Release
+		{46490F45-7A91-47D8-8A12-D55672641070}.Release|x86.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

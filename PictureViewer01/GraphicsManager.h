@@ -30,7 +30,7 @@ class GraphicsManager
 public:
 	GraphicsManager();
 	~GraphicsManager();
-	
+
 	void Initialize(HWND hwnd);
 	void ReleaseConverter();
 	void ReleaseDeviceResources();
@@ -41,8 +41,10 @@ public:
 	HRESULT CreateFormatConverter();
 	HRESULT CreateBitmapFromIStream(IStream* pStream);
 	HRESULT CreateBitmapFromFile(std::wstring const& Filepath);
-	
+
 	void Resize(int Width, int Height);
+	void DrawText(std::wstring const& Text, float x, float y, D2D1::ColorF color = D2D1::ColorF::Black);
+	void DrawTextCentered(std::wstring const& Text, float y, D2D1::ColorF color = D2D1::ColorF::Black);
 
 	D2D1_WINDOW_STATE CheckWindowState() const;
 
