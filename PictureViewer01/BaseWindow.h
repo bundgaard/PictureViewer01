@@ -37,6 +37,7 @@ public:
 	virtual void OnMouseMove(MouseMoveControl ctrl, float x, float y) noexcept = 0;
 	virtual void OnMouseScrollWheel(short delta) noexcept = 0;
 	virtual void OnKeyDown(UINT32 VirtualKey) noexcept = 0;
+	virtual void OnChar(wchar_t KeyCode, short RepeatCount) noexcept = 0;
 
 
 	[[nodiscard]] virtual LRESULT OnNcCreate(WPARAM wparam, LPARAM lparam) noexcept
@@ -92,8 +93,21 @@ public:
 		}
 		case WM_PAINT:
 		{
-			return OnPaint(hwnd);
+			PAINTSTRUCT ps;
+			BeginPaint(hwnd, &ps);
+			auto Result = OnPaint(hwnd);
+			EndPaint(hwnd, &ps);
+			return Result;
 		}
+		case WM_CHAR:
+		{
+			OnChar(
+				(TCHAR)(wparam),
+				(int)(short)LOWORD(lparam)
+			);
+			break;
+		}
+
 		default:
 			return DefWindowProcW(hwnd, msg, wparam, lparam);
 		}
@@ -127,3 +141,26 @@ inline BaseWindow<T>::~BaseWindow()
 {
 
 }
+//template<typename T>
+//HRESULT  BaseWindow<T>::Initialize(HINSTANCE hInst) noexcept {}
+//
+//template<typename T>
+//LRESULT BaseWindow<T>::OnPaint(HWND hwnd)noexcept {}
+//
+//template<typename T>
+//void BaseWindow<T>::OnSize(UINT Width, UINT Height)noexcept {}
+//
+//template<typename T>
+//void BaseWindow<T>::OnLButtonDown(float x, float y)noexcept {}
+//
+//template<typename T>
+//void BaseWindow<T>::OnLButtonUp(float x, float y)noexcept {}
+//
+//template<typename T>
+//void BaseWindow<T>::OnMouseMove(MouseMoveControl ctrl, float x, float y)noexcept {}
+//
+//template<typename T>
+//void BaseWindow<T>::OnMouseScrollWheel(short delta)noexcept {}
+//
+//template<typename T>
+//inline void BaseWindow<T>::OnKeyDown(UINT32 VirtualKey) noexcept {}

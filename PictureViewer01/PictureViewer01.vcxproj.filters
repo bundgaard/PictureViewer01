@@ -24,6 +24,12 @@
     <ClCompile Include="ZipReader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GraphicsManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CommonDialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Viewer.h">
@@ -39,6 +45,21 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SafeRelease.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="COM.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ZipFile.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Converter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicsManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
