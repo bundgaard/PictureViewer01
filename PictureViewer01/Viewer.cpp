@@ -12,6 +12,7 @@
 #include "ZipFile.h"
 #include "Converter.h"
 #include "GraphicsManager.h"
+#include <strsafe.h>
 
 void Log(const wchar_t* fmt, ...)
 {
@@ -19,8 +20,9 @@ void Log(const wchar_t* fmt, ...)
 	va_start(args, fmt);
 
 	std::wstring Text;
-	Text.resize(_vscwprintf(fmt, args));
-	_vsnwprintf_s(Text.data(), Text.size(), _TRUNCATE, fmt, args);
+	Text.resize(_vscwprintf(fmt, args)+1);
+	
+	_vsnwprintf_s(Text.data(), Text.size(),_TRUNCATE, fmt, args);
 	OutputDebugStringW(Text.c_str());
 	va_end(args);
 }
@@ -109,10 +111,10 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 		mGraphicManager.RenderTarget()->BeginDraw();
 		mGraphicManager.RenderTarget()->SetTransform(D2D1::IdentityMatrix());
 		mGraphicManager.RenderTarget()->Clear();
-
+		auto ClientSize = mGraphicManager.RenderTarget()->GetSize();
 		auto color = mGraphicManager.Brush()->GetColor();
 		mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::PaleVioletRed));
-		mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, 640.f, 480.f), mGraphicManager.Brush());
+		mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, ClientSize.width, ClientSize.height), mGraphicManager.Brush());
 		mGraphicManager.Brush()->SetColor(color);
 
 		if (mGraphicManager.Converter() && !mGraphicManager.Bitmap())
@@ -122,27 +124,27 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 		}
 
 		std::wstring OpenFileText = L"[CTRL] + [o] - To open archive.";
-		mGraphicManager.DrawTextCentered(OpenFileText, 50);
-		mGraphicManager.DrawTextCentered(L"PageUp and PageDown to move back and forth between images in archive.", 75);
+		mGraphicManager.DrawTextCentered(OpenFileText, 50, D2D1::ColorF::White);
+		mGraphicManager.DrawTextCentered(L"PageUp and PageDown to move back and forth between images in archive.", 75, D2D1::ColorF::White);
 
 		if (mGraphicManager.Bitmap())
 		{
-			auto ClientSize = mGraphicManager.RenderTarget()->GetSize();
+			
 			auto BitmapSize = mGraphicManager.Bitmap()->GetSize();
 
 			auto WidthRatio = std::abs(BitmapSize.width / ClientSize.width); // TODO need to fix this so it doesn't scale when resizing app
 			auto HeightRatio = std::abs(BitmapSize.height / ClientSize.height);
 			
-			auto Ratio = GetImageRatio(BitmapSize.width, BitmapSize.height);
-			
+			// auto Ratio = GetImageRatio(BitmapSize.width, BitmapSize.height);
+			auto Ratio = GetImageRatio(ClientSize.width, ClientSize.height);
 			Ratio *= m_scaleFactor;
-			
+
 			auto ClientRect = D2D1::RectF(m_imageX, m_imageY, m_imageX + BitmapSize.width, m_imageY + BitmapSize.height);
 			
 			D2D1_MATRIX_3X2_F transform{};
 			
 			mGraphicManager.RenderTarget()->GetTransform(&transform);
-			mGraphicManager.RenderTarget()->SetTransform(D2D1::Matrix3x2F::Scale(m_scaleFactor, m_scaleFactor));
+			mGraphicManager.RenderTarget()->SetTransform(D2D1::Matrix3x2F::Scale(Ratio, Ratio));
 			mGraphicManager.RenderTarget()->DrawBitmap(mGraphicManager.Bitmap(), ClientRect);
 			mGraphicManager.RenderTarget()->SetTransform(transform);
 		}
@@ -158,7 +160,7 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 
 void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 {
-#ifdef DEBUG || _DEBUG
+#ifdef _DEBUG
 
 	std::wstringstream Out;
 	Out << std::hex << VirtualKey << L"\n";
