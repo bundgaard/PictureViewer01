@@ -9,3 +9,20 @@
 #include <vector>
 
 
+static void Log(const wchar_t* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+
+	std::wstring Text;
+	Text.resize(_vscwprintf(fmt, args) + 1);
+
+	_vsnwprintf_s(Text.data(), Text.size(), _TRUNCATE, fmt, args);
+	OutputDebugStringW(Text.c_str());
+	va_end(args);
+}; 
+#ifdef _DEBUG
+#define LOG(fmt, ...) Log(fmt, __VA_ARGS__)
+#else 
+#define LOG(fmt, ...)
+#endif

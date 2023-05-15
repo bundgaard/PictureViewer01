@@ -14,24 +14,7 @@
 #include "GraphicsManager.h"
 #include <strsafe.h>
 
-void Log(const wchar_t* fmt, ...)
-{
-	va_list args;
-	va_start(args, fmt);
 
-	std::wstring Text;
-	Text.resize(_vscwprintf(fmt, args)+1);
-	
-	_vsnwprintf_s(Text.data(), Text.size(),_TRUNCATE, fmt, args);
-	OutputDebugStringW(Text.c_str());
-	va_end(args);
-}
-
-#ifdef _DEBUG
-#define LOG(fmt, ...) Log(fmt, __VA_ARGS__)
-#else 
-#define LOG(fmt, ...)
-#endif
 
 Viewer::Viewer(GraphicsManager& graphicManager)
 	: mGraphicManager(graphicManager)
@@ -41,7 +24,7 @@ Viewer::Viewer(GraphicsManager& graphicManager)
 
 Viewer::~Viewer()
 {
-	OutputDebugStringW(L"Viewer DTOR\n");
+	LOG(L"Viewer DTOR\n");
 }
 
 HRESULT Viewer::Initialize(HINSTANCE hInst)
@@ -69,7 +52,7 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 
 	if (SUCCEEDED(hr))
 	{
-		OutputDebugStringW(L"Created class\n");
+		LOG(L"Created class\n");
 		HWND hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW,
 			L"CPICTUREVIEWER01",
 			L"VIEWER",
@@ -85,19 +68,16 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 
 	if (SUCCEEDED(hr))
 	{
-		OutputDebugStringW(L"Created Window\n");
+		LOG(L"Created Window\n");
 	}
 	return hr;
 }
 
 
 
-inline float GetImageRatio(float width, float height)
+inline float GetRatio(float width, float height)
 {
-	auto Big = std::max(width, height);
-	auto Small = std::min(width, height);
-	auto Ratio = std::abs(Big / Small);
-	return Ratio;
+	return width / height;
 }
 
 inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
@@ -123,30 +103,49 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 			mGraphicManager.RenderTarget()->CreateBitmapFromWicBitmap(mGraphicManager.Converter(), &ptr);
 		}
 
-		std::wstring OpenFileText = L"[CTRL] + [o] - To open archive.";
-		mGraphicManager.DrawTextCentered(OpenFileText, 50, D2D1::ColorF::White);
+		mGraphicManager.DrawTextCentered(L"[CTRL] + [o] - To open archive.", 50, D2D1::ColorF::White);
 		mGraphicManager.DrawTextCentered(L"PageUp and PageDown to move back and forth between images in archive.", 75, D2D1::ColorF::White);
 
 		if (mGraphicManager.Bitmap())
 		{
-			
 			auto BitmapSize = mGraphicManager.Bitmap()->GetSize();
 
-			auto WidthRatio = std::abs(BitmapSize.width / ClientSize.width); // TODO need to fix this so it doesn't scale when resizing app
-			auto HeightRatio = std::abs(BitmapSize.height / ClientSize.height);
-			
-			// auto Ratio = GetImageRatio(BitmapSize.width, BitmapSize.height);
-			auto Ratio = GetImageRatio(ClientSize.width, ClientSize.height);
-			Ratio *= m_scaleFactor;
+			auto BitmapRatio = GetRatio(BitmapSize.width, BitmapSize.height);
+			auto WindowRatio = GetRatio(ClientSize.width - 100.0f, ClientSize.height - 100.0f); // 100.0f are the imaginary borders, will be moved somewhere
 
-			auto ClientRect = D2D1::RectF(m_imageX, m_imageY, m_imageX + BitmapSize.width, m_imageY + BitmapSize.height);
-			
+			float scaledWidth{};
+			float scaledHeight{};
+
+			if (BitmapRatio > WindowRatio)
+			{
+				scaledWidth = ClientSize.width - 100.0f;
+				scaledHeight = scaledWidth / BitmapRatio;
+			}
+			else
+			{
+				scaledHeight = ClientSize.height - 100.0f;
+				scaledWidth = scaledHeight * BitmapRatio;
+			}
+
+			auto ClientRect = D2D1::RectF(
+				m_imageX + ((ClientSize.width - scaledWidth) / 2.0f),
+				m_imageY + ((ClientSize.height - scaledHeight) / 2.0f),
+				m_imageX + ((ClientSize.width + scaledWidth) / 2.0f),
+				m_imageY + ((ClientSize.height + scaledHeight) / 2.0f)
+			);
+
 			D2D1_MATRIX_3X2_F transform{};
-			
-			mGraphicManager.RenderTarget()->GetTransform(&transform);
-			mGraphicManager.RenderTarget()->SetTransform(D2D1::Matrix3x2F::Scale(Ratio, Ratio));
+
+			//mGraphicManager.RenderTarget()->GetTransform(&transform);
+			//mGraphicManager.RenderTarget()->SetTransform(
+			//	D2D1::Matrix3x2F::Scale(
+			//		BitmapRatio,
+			//		BitmapRatio
+			//		/*, D2D1::Point2F(m_lastMouseX, m_lastMouseY)*/
+			//	)
+			//);
 			mGraphicManager.RenderTarget()->DrawBitmap(mGraphicManager.Bitmap(), ClientRect);
-			mGraphicManager.RenderTarget()->SetTransform(transform);
+			/*mGraphicManager.RenderTarget()->SetTransform(transform);*/
 		}
 		hr = mGraphicManager.RenderTarget()->EndDraw();
 		if (hr == D2DERR_RECREATE_TARGET)
@@ -164,8 +163,12 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 
 	std::wstringstream Out;
 	Out << std::hex << VirtualKey << L"\n";
-	OutputDebugStringW(Out.str().c_str());
+	LOG(Out.str().c_str());
 #endif
+	if (VirtualKey == VK_SPACE) 
+	{
+		m_imageX = m_imageY = 0.0f;
+	}
 	//	if (VirtualKey == VK_SPACE)
 	//	{
 	//		m_imageX = m_imageY = 0;
