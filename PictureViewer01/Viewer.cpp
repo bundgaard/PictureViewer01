@@ -13,7 +13,7 @@
 #include "Converter.h"
 #include "GraphicsManager.h"
 #include <strsafe.h>
-
+#include <algorithm>
 
 
 Viewer::Viewer(GraphicsManager& graphicManager)
@@ -385,7 +385,20 @@ void Viewer::Start()
 	}
 }
 
+inline void RemoveDuplicates(std::vector<std::unique_ptr<ZipFile>>& list)
+{
+	auto Compare = [&](std::unique_ptr<ZipFile>& A, std::unique_ptr<ZipFile>& B) {
+		return A->Name < B->Name;
+	};
 
+	std::sort(list.begin(), list.end(), Compare);
+	auto EraseComparator = [](std::unique_ptr<ZipFile>& A, std::unique_ptr<ZipFile>& B) {
+		return A->Name == B->Name;
+	};
+	auto it = std::unique(list.begin(), list.end(), EraseComparator);
+
+	list.erase(it, list.end());
+}
 
 std::vector<std::unique_ptr<ZipFile>> Viewer::ReadZip(std::wstring const& Filename)
 {
@@ -428,5 +441,11 @@ std::vector<std::unique_ptr<ZipFile>> Viewer::ReadZip(std::wstring const& Filena
 		}
 	}
 	zip_close(archive);
+	auto Count = Files.size();
+	LOG(L"Loaded %d files\n", Count);
+	// Clean the zip list
+	RemoveDuplicates(Files);
+	LOG(L"Erased %d\n", Count - Files.size());
+
 	return Files;
 }

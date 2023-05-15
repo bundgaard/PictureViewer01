@@ -8,10 +8,9 @@
 #include <dwrite.h>
 #include <commdlg.h>
 
-constexpr wchar_t PICTURE[] = L"C:\\Code\\digits.png";
-
-class GraphicsManager;
 struct ZipFile;
+class GraphicsManager;
+
 class Viewer : public BaseWindow<Viewer>
 {
 public:
