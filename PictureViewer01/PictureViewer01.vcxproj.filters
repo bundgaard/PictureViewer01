@@ -30,6 +30,9 @@
     <ClCompile Include="CommonDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Log.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Viewer.h">
@@ -62,9 +65,13 @@
     <ClInclude Include="CommonDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Log.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ZipExample.md" />
     <None Include="vcpkg.json" />
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

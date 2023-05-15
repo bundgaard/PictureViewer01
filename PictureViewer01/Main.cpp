@@ -6,6 +6,8 @@
 #pragma comment(lib, "dwrite")
 
 
+
+
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpszCmdLine, _In_ int nCmdShow)
 {
 
@@ -20,7 +22,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	if (SUCCEEDED(hr))
 	{
 		
-		OutputDebugStringW(L"Initialized COM\n");
+		LOG(L"Initialized COM\n");
 		app = std::make_unique<Viewer>(graphicManager);
 		hr = app->Initialize(hInstance);
 

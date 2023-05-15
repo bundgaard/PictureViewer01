@@ -12,24 +12,9 @@
 #include "ZipFile.h"
 #include "Converter.h"
 #include "GraphicsManager.h"
+#include <strsafe.h>
 
-void Log(const wchar_t* fmt, ...)
-{
-	va_list args;
-	va_start(args, fmt);
 
-	std::wstring Text;
-	Text.resize(_vscwprintf(fmt, args));
-	_vsnwprintf_s(Text.data(), Text.size(), _TRUNCATE, fmt, args);
-	OutputDebugStringW(Text.c_str());
-	va_end(args);
-}
-
-#ifdef _DEBUG
-#define LOG(fmt, ...) Log(fmt, __VA_ARGS__)
-#else 
-#define LOG(fmt, ...)
-#endif
 
 Viewer::Viewer(GraphicsManager& graphicManager)
 	: mGraphicManager(graphicManager)
@@ -39,7 +24,7 @@ Viewer::Viewer(GraphicsManager& graphicManager)
 
 Viewer::~Viewer()
 {
-	OutputDebugStringW(L"Viewer DTOR\n");
+	LOG(L"Viewer DTOR\n");
 }
 
 HRESULT Viewer::Initialize(HINSTANCE hInst)
@@ -67,7 +52,7 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 
 	if (SUCCEEDED(hr))
 	{
-		OutputDebugStringW(L"Created class\n");
+		LOG(L"Created class\n");
 		HWND hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW,
 			L"CPICTUREVIEWER01",
 			L"VIEWER",
@@ -83,19 +68,16 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 
 	if (SUCCEEDED(hr))
 	{
-		OutputDebugStringW(L"Created Window\n");
+		LOG(L"Created Window\n");
 	}
 	return hr;
 }
 
 
 
-inline float GetImageRatio(float width, float height)
+inline float GetRatio(float width, float height)
 {
-	auto Big = std::max(width, height);
-	auto Small = std::min(width, height);
-	auto Ratio = std::abs(Big / Small);
-	return Ratio;
+	return width / height;
 }
 
 inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
@@ -109,42 +91,68 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 		mGraphicManager.RenderTarget()->BeginDraw();
 		mGraphicManager.RenderTarget()->SetTransform(D2D1::IdentityMatrix());
 		mGraphicManager.RenderTarget()->Clear();
-
+		auto ClientSize = mGraphicManager.RenderTarget()->GetSize();
 		auto color = mGraphicManager.Brush()->GetColor();
-		mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::PaleVioletRed));
-		mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, 640.f, 480.f), mGraphicManager.Brush());
-		mGraphicManager.Brush()->SetColor(color);
+
 
 		if (mGraphicManager.Converter() && !mGraphicManager.Bitmap())
 		{
 			auto ptr = mGraphicManager.Bitmap();
 			mGraphicManager.RenderTarget()->CreateBitmapFromWicBitmap(mGraphicManager.Converter(), &ptr);
 		}
+		if (!mGraphicManager.Bitmap())
+		{
+			mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::Crimson));
+			mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, ClientSize.width, ClientSize.height), mGraphicManager.Brush());
+			mGraphicManager.Brush()->SetColor(color);
 
-		std::wstring OpenFileText = L"[CTRL] + [o] - To open archive.";
-		mGraphicManager.DrawTextCentered(OpenFileText, 50);
-		mGraphicManager.DrawTextCentered(L"PageUp and PageDown to move back and forth between images in archive.", 75);
-
+			mGraphicManager.DrawTextCentered(L"[CTRL] + [o] - To open archive.", 50, D2D1::ColorF::White);
+			mGraphicManager.DrawTextCentered(L"[PageUp] and [PageDown] to move back and forth between images in archive.", 75, D2D1::ColorF::White);
+			mGraphicManager.DrawTextCentered(L"[ESC] to unload archive and return back to this menu.", 100, D2D1::ColorF::White);
+		}
 		if (mGraphicManager.Bitmap())
 		{
-			auto ClientSize = mGraphicManager.RenderTarget()->GetSize();
 			auto BitmapSize = mGraphicManager.Bitmap()->GetSize();
 
-			auto WidthRatio = std::abs(BitmapSize.width / ClientSize.width); // TODO need to fix this so it doesn't scale when resizing app
-			auto HeightRatio = std::abs(BitmapSize.height / ClientSize.height);
-			
-			auto Ratio = GetImageRatio(BitmapSize.width, BitmapSize.height);
-			
-			Ratio *= m_scaleFactor;
-			
-			auto ClientRect = D2D1::RectF(m_imageX, m_imageY, m_imageX + BitmapSize.width, m_imageY + BitmapSize.height);
-			
+			auto BitmapRatio = GetRatio(BitmapSize.width, BitmapSize.height);
+			auto WindowRatio = GetRatio(ClientSize.width - 100.0f, ClientSize.height - 100.0f); // 100.0f are the imaginary borders, will be moved somewhere
+
+			float scaledWidth{};
+			float scaledHeight{};
+
+			if (BitmapRatio > WindowRatio)
+			{
+				scaledWidth = ClientSize.width - 100.0f;
+				scaledHeight = scaledWidth / BitmapRatio;
+			}
+			else
+			{
+				scaledHeight = ClientSize.height - 100.0f;
+				scaledWidth = scaledHeight * BitmapRatio;
+			}
+
+			auto ClientRect = D2D1::RectF(
+				(((ClientSize.width - 50.0f) - scaledWidth) / 2.0f),
+				(((ClientSize.height - 50.0f) - scaledHeight) / 2.0f),
+				(((ClientSize.width - 50.0f) + scaledWidth) / 2.0f),
+				(((ClientSize.height - 50.0f) + scaledHeight) / 2.0f)
+			);
+
 			D2D1_MATRIX_3X2_F transform{};
-			
+
 			mGraphicManager.RenderTarget()->GetTransform(&transform);
-			mGraphicManager.RenderTarget()->SetTransform(D2D1::Matrix3x2F::Scale(m_scaleFactor, m_scaleFactor));
+			mGraphicManager.RenderTarget()->SetTransform(
+				D2D1::Matrix3x2F::Scale(
+					m_scaleFactor,
+					m_scaleFactor,
+					D2D1::Point2F(
+						((ClientSize.width - 50.0f) - scaledWidth) / 2.0f,
+						((ClientSize.height - 50.0f) - scaledHeight) / 2.0f)
+				)
+			);
+
 			mGraphicManager.RenderTarget()->DrawBitmap(mGraphicManager.Bitmap(), ClientRect);
-			mGraphicManager.RenderTarget()->SetTransform(transform);
+			/*mGraphicManager.RenderTarget()->SetTransform(transform);*/
 		}
 		hr = mGraphicManager.RenderTarget()->EndDraw();
 		if (hr == D2DERR_RECREATE_TARGET)
@@ -158,12 +166,16 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 
 void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 {
-#ifdef DEBUG || _DEBUG
+#ifdef _DEBUG
 
 	std::wstringstream Out;
 	Out << std::hex << VirtualKey << L"\n";
-	OutputDebugStringW(Out.str().c_str());
+	LOG(Out.str().c_str());
 #endif
+	if (VirtualKey == VK_SPACE)
+	{
+		m_imageX = m_imageY = 0.0f;
+	}
 	//	if (VirtualKey == VK_SPACE)
 	//	{
 	//		m_imageX = m_imageY = 0;
@@ -219,6 +231,7 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 		HRESULT hr = OpenArchive();
 		if (SUCCEEDED(hr))
 		{
+			m_imageX = m_imageY = 0;
 			this->LoadImage(+1);
 		}
 	}
@@ -291,7 +304,7 @@ HRESULT Viewer::OpenArchive()
 	{
 		LOG(L"Received %s\n", ofn.lpstrFile);
 
-		m_imageX = m_imageY = 0;
+
 		m_scaleFactor = 1.0f;
 		m_zip_files.clear();
 		m_zip_files = ReadZip(ofn.lpstrFile);
