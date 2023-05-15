@@ -5,25 +5,28 @@
 std::wstring ToWideString(std::string const& Text)
 {
 
-	auto const Size = MultiByteToWideChar(CP_UTF8, 0, Text.c_str(), Text.size(), nullptr, 0);
+	int TextSize = static_cast<int>(Text.size());
+	auto const Size = MultiByteToWideChar(CP_UTF8, 0, Text.c_str(), TextSize, nullptr, 0);
 	std::wstring Result;
 	Result.resize(Size);
-	MultiByteToWideChar(CP_UTF8, 0, Text.c_str(), Text.size(), Result.data(), Result.size());
+	
+	MultiByteToWideChar(CP_UTF8, 0, Text.c_str(), TextSize, Result.data(), TextSize);
 	return Result;
 }
 
 std::string FromWideString(std::wstring const& Text)
 {
-	auto const Size = WideCharToMultiByte(CP_UTF8, 0, Text.data(), static_cast<int>(Text.size()), nullptr, 0, nullptr, nullptr);
+	int TextSize = static_cast<int>(Text.size());
+	auto const Size = WideCharToMultiByte(CP_UTF8, 0, Text.data(), TextSize, nullptr, 0, nullptr, nullptr);
 	std::string Result{};
 	Result.resize(Size);
 	WideCharToMultiByte(
 		CP_UTF8,
 		0,
 		Text.c_str(),
-		Text.size(),
+		TextSize,
 		Result.data(),
-		Result.size(),
+		TextSize,
 		"",
 		nullptr);
 	return Result;
