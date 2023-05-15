@@ -425,7 +425,7 @@ std::vector<std::unique_ptr<ZipFile>> Viewer::ReadZip(std::wstring const& Filena
 			std::unique_ptr<ZipFile> ptr = std::make_unique<ZipFile>(stat.name, static_cast<size_t>(stat.size));
 			std::vector<byte> Bytes;
 			Bytes.resize(ptr->Size);
-			zip_int64_t bytes_read = zip_fread(File, Bytes.data(), Bytes.size());
+			zip_int64_t bytes_read = zip_fread(File, Bytes.data(), Bytes.size()); // TODO: could actually have a list and loop through it before hand or just do the work and do it after? I choose the latter.
 			HRESULT hr = S_OK;
 			hr = bytes_read == ptr->Size ? S_OK : E_FAIL;
 			if (SUCCEEDED(hr))
