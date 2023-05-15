@@ -2,10 +2,11 @@
 #include <wincodec.h>
 #include <dwrite.h>
 #include <string>
+#include "Log.h"
 
 GraphicsManager::~GraphicsManager()
 {
-	OutputDebugStringW(L"GraphicManager DTOR\n");
+	LOG(L"GraphicManager DTOR\n");
 	SafeRelease(m_brush);
 	SafeRelease(m_bitmap);
 	SafeRelease(m_d2_factory);
@@ -31,7 +32,7 @@ mHwnd(nullptr)
 void GraphicsManager::Initialize(HWND hwnd)
 {
 	mHwnd = hwnd;
-	OutputDebugStringW(L"GraphicManager set HWND\n");
+	LOG(L"GraphicManager set HWND\n");
 	HRESULT hr = S_OK;
 	if (SUCCEEDED(hr))
 	{
@@ -45,13 +46,13 @@ void GraphicsManager::Initialize(HWND hwnd)
 
 	if (SUCCEEDED(hr))
 	{
-		OutputDebugStringW(L"Created WIC Factory\n");
+		LOG(L"Created WIC Factory\n");
 		hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_d2_factory);
 	}
 
 	if (SUCCEEDED(hr))
 	{
-		OutputDebugStringW(L"Created D2D1 Factory\n");
+		LOG(L"Created D2D1 Factory\n");
 		hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, _uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&m_dwrite_factory));
 	}
 
@@ -154,7 +155,7 @@ HRESULT GraphicsManager::CreateDeviceResources(HWND hwnd)
 		hr = GetClientRect(hwnd, &rc) ? S_OK : E_FAIL;
 		if (SUCCEEDED(hr))
 		{
-			OutputDebugStringW(L"Creating HWND render target\n");
+			LOG(L"Creating HWND render target\n");
 			D2D1_RENDER_TARGET_PROPERTIES renderProperties = D2D1::RenderTargetProperties();
 			renderProperties.dpiX = 96.0f;
 			renderProperties.dpiY = 96.0f;
@@ -195,31 +196,31 @@ HRESULT GraphicsManager::CreateBitmapFromIStream(IStream* pStream)
 	IWICBitmapFrameDecode* frame = nullptr;
 	if (SUCCEEDED(hr))
 	{
-		OutputDebugStringW(L"Created decoder from Stream\n");
+		LOG(L"Created decoder from Stream\n");
 		hr = decoder->GetFrame(0, &frame);
 	}
 
 	if (SUCCEEDED(hr))
 	{
-		OutputDebugStringW(L"GetFrame\n");
+		LOG(L"GetFrame\n");
 		CreateFormatConverter();
 	}
 
 	if (SUCCEEDED(hr))
 	{
-		OutputDebugStringW(L"Create format converter\n");
+		LOG(L"Create format converter\n");
 		hr = Converter()->Initialize(frame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, nullptr, 0.0f, WICBitmapPaletteTypeCustom);
 	}
 
 	if (SUCCEEDED(hr))
 	{
-		OutputDebugStringW(L"Initialized converter\n");
+		LOG(L"Initialized converter\n");
 		hr = CreateDeviceResources(mHwnd);
 	}
 
 	if (SUCCEEDED(hr))
 	{
-		OutputDebugStringW(L"Create device resources\n");
+		LOG(L"Create device resources\n");
 		CreateBitmapFromWicBitmap();
 	}
 
