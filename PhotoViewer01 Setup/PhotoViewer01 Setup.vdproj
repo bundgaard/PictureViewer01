@@ -527,7 +527,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:PhotoViewer01"
         "ProductCode" = "8:{DD9B6342-B0C1-4766-8CA4-01F1A218FECD}"
-        "PackageCode" = "8:{E23FE1E4-B764-41B0-A9F1-A8D42CBACD0F}"
+        "PackageCode" = "8:{2BF1DEF5-A673-4CE4-93AD-D01AB935E283}"
         "UpgradeCode" = "8:{DB3C9E3C-909B-43D4-A593-AD160930B1EA}"
         "AspNetVersion" = "8:2.0.50727.0"
         "RestartWWWService" = "11:FALSE"
@@ -550,7 +550,7 @@
         "UseSystemSearchPath" = "11:TRUE"
         "TargetPlatform" = "3:1"
         "PreBuildEvent" = "8:"
-        "PostBuildEvent" = "8:"
+        "PostBuildEvent" = "8:\"C:\\Program Files\\7-Zip\\7z.exe\" a \"$(TargetDir)Release.zip\" \"$(TargetDir)*\""
         "RunPostBuildEvent" = "3:0"
         }
         "Registry"
