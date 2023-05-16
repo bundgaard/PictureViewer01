@@ -2,9 +2,9 @@
 
 
 template<typename T>
-inline void SafeRelease(T*& t)
+void SafeRelease(T*& t)
 {
-	if (NULL != t)
+	if (nullptr != t)
 	{
 		t->Release();
 		t = nullptr;

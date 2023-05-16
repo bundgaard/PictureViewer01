@@ -2,13 +2,9 @@
 #include "Viewer.h"
 #include <windowsx.h>
 
-
-
 #include <sstream>
-#include <array>
 
 #include "BaseWindow.h"
-#include "SafeRelease.h"
 #include "ZipFile.h"
 #include "Converter.h"
 #include "GraphicsManager.h"
@@ -21,7 +17,8 @@ namespace
 {
 
 	constexpr wchar_t VIEWER_CLASSNAME[] = L"CPICTUREVIEWER01";
-	inline float GetRatio(float width, float height)
+
+	float GetRatio(const float width, const float height)
 	{
 		return width / height;
 	}
@@ -38,7 +35,7 @@ Viewer::~Viewer()
 	LOG(L"Viewer DTOR\n");
 }
 
-HRESULT Viewer::Initialize(HINSTANCE hInst)
+HRESULT Viewer::Initialize(const HINSTANCE hInst)
 {
 	WNDCLASSEX wc{};
 	HRESULT hr = S_OK;
@@ -49,8 +46,8 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 		wc.cbWndExtra = sizeof(LONG_PTR);
 		wc.cbClsExtra = 0;
 		wc.lpszClassName = VIEWER_CLASSNAME;
-		wc.lpfnWndProc = (WNDPROC)Viewer::s_WndProc;
-		wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+		wc.lpfnWndProc = static_cast<WNDPROC>(s_WndProc);
+		wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
 		wc.hIcon = wc.hIconSm = LoadIcon(nullptr, IDI_APPLICATION);
 		wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
 		wc.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
@@ -64,15 +61,15 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 	if (SUCCEEDED(hr))
 	{
 		LOG(L"Created class\n");
-		HWND hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW,
-			L"CPICTUREVIEWER01",
-			L"VIEWER",
-			WS_VISIBLE | WS_OVERLAPPEDWINDOW,
-			CW_USEDEFAULT, CW_USEDEFAULT,
-			640, 480,
-			nullptr, nullptr,
-			m_hInst,
-			this);
+		const HWND hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW,
+		                                  L"CPICTUREVIEWER01",
+		                                  L"VIEWER",
+		                                  WS_VISIBLE | WS_OVERLAPPEDWINDOW,
+		                                  CW_USEDEFAULT, CW_USEDEFAULT,
+		                                  640, 480,
+		                                  nullptr, nullptr,
+		                                  m_hInst,
+		                                  this);
 		mGraphicManager.Initialize(hwnd);
 		hr = hwnd ? S_OK : E_FAIL;
 	}
@@ -87,7 +84,7 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 
 
 
-inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
+inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 {
 	HRESULT hr = S_OK;
 	PAINTSTRUCT ps{};
@@ -98,19 +95,19 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 		mGraphicManager.RenderTarget()->BeginDraw();
 		mGraphicManager.RenderTarget()->SetTransform(D2D1::IdentityMatrix());
 		mGraphicManager.RenderTarget()->Clear();
-		auto ClientSize = mGraphicManager.RenderTarget()->GetSize();
-		auto color = mGraphicManager.Brush()->GetColor();
+		const auto clientSize = mGraphicManager.RenderTarget()->GetSize();
+		const auto color = mGraphicManager.Brush()->GetColor();
 
 
 		if (mGraphicManager.Converter() && !mGraphicManager.Bitmap())
 		{
 			auto ptr = mGraphicManager.Bitmap();
-			mGraphicManager.RenderTarget()->CreateBitmapFromWicBitmap(mGraphicManager.Converter(), &ptr);
+			hr = mGraphicManager.RenderTarget()->CreateBitmapFromWicBitmap(mGraphicManager.Converter(), &ptr);
 		}
 		if (!mGraphicManager.Bitmap())
 		{
 			mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::Crimson));
-			mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, ClientSize.width, ClientSize.height), mGraphicManager.Brush());
+			mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, clientSize.width, clientSize.height), mGraphicManager.Brush());
 			mGraphicManager.Brush()->SetColor(color);
 
 			mGraphicManager.DrawTextCentered(L"[CTRL] + [o] - To open archive.", 50, D2D1::ColorF::White);
@@ -119,37 +116,37 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 		}
 		if (mGraphicManager.Bitmap())
 		{
-			auto BitmapSize = mGraphicManager.Bitmap()->GetSize();
+			const auto bitmapSize = mGraphicManager.Bitmap()->GetSize();
 
-			const float marginLeft = 50.0f;
-			const float marginRight = 50.0f;
-			const float marginTop = 50.0f;
-			const float marginBottom = 50.0f;
+			constexpr float marginLeft = 50.0f;
+			constexpr float marginRight = 50.0f;
+			constexpr float marginTop = 50.0f;
+			constexpr float marginBottom = 50.0f;
 
-			auto BitmapRatio = GetRatio(BitmapSize.width, BitmapSize.height);
-			auto WindowRatio = GetRatio(ClientSize.width - (marginLeft + marginRight), ClientSize.height - (marginTop + marginBottom)); // 100.0f are the imaginary borders, will be moved somewhere
+			const auto bitmapRatio = GetRatio(bitmapSize.width, bitmapSize.height);
+			const auto windowRatio = GetRatio(clientSize.width - (marginLeft + marginRight), clientSize.height - (marginTop + marginBottom)); // 100.0f are the imaginary borders, will be moved somewhere
 
 			float scaledWidth{};
 			float scaledHeight{};
 
 
-			if (BitmapRatio > WindowRatio)
+			if (bitmapRatio > windowRatio)
 			{
-				scaledWidth = ClientSize.width - (marginLeft + marginRight);
-				scaledHeight = scaledWidth / BitmapRatio;
+				scaledWidth = clientSize.width - (marginLeft + marginRight);
+				scaledHeight = scaledWidth / bitmapRatio;
 			}
 			else
 			{
-				scaledHeight = ClientSize.height - (marginTop + marginBottom);
-				scaledWidth = scaledHeight * BitmapRatio;
+				scaledHeight = clientSize.height - (marginTop + marginBottom);
+				scaledWidth = scaledHeight * bitmapRatio;
 			}
 
 
-			auto ClientRect = D2D1::RectF(
-				(((ClientSize.width - marginLeft) - scaledWidth) / 2.0f),
-				(((ClientSize.height - marginTop) - scaledHeight) / 2.0f),
-				(((ClientSize.width + marginRight) + scaledWidth) / 2.0f),
-				(((ClientSize.height + marginBottom) + scaledHeight) / 2.0f)
+			const auto clientRect = D2D1::RectF(
+				(((clientSize.width - marginLeft) - scaledWidth) / 2.0f),
+				(((clientSize.height - marginTop) - scaledHeight) / 2.0f),
+				(((clientSize.width + marginRight) + scaledWidth) / 2.0f),
+				(((clientSize.height + marginBottom) + scaledHeight) / 2.0f)
 			);
 
 			D2D1_MATRIX_3X2_F transform{};
@@ -160,12 +157,12 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 					m_scaleFactor,
 					m_scaleFactor,
 					D2D1::Point2F(
-						((ClientSize.width - 50.0f) - scaledWidth) / 2.0f,
-						((ClientSize.height - 50.0f) - scaledHeight) / 2.0f)
+						((clientSize.width - 50.0f) - scaledWidth) / 2.0f,
+						((clientSize.height - 50.0f) - scaledHeight) / 2.0f)
 				)
 			);
 
-			mGraphicManager.RenderTarget()->DrawBitmap(mGraphicManager.Bitmap(), ClientRect);
+			mGraphicManager.RenderTarget()->DrawBitmap(mGraphicManager.Bitmap(), clientRect);
 			/*mGraphicManager.RenderTarget()->SetTransform(transform);*/
 		}
 		hr = mGraphicManager.RenderTarget()->EndDraw();
@@ -178,23 +175,23 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 	return SUCCEEDED(hr) ? S_OK : E_FAIL;
 }
 
-void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
+void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 {
 #ifdef _DEBUG
 
-	std::wstringstream Out;
-	Out << std::hex << VirtualKey << L"\n";
-	LOG(Out.str().c_str());
+	std::wstringstream out;
+	out << std::hex << virtualKey << L"\n";
+	LOG(out.str().c_str());
 #endif
-	if (VirtualKey == VK_SPACE)
+	if (virtualKey == VK_SPACE)
 	{
 		m_imageX = m_imageY = 0.0f;
 	}
 
-	if (VirtualKey == VK_PRIOR) // PageUp
+	if (virtualKey == VK_PRIOR) // PageUp
 	{
 		m_ZipManager.Previous();
-		HRESULT hr = this->LoadImage(0);
+		const HRESULT hr = this->LoadImage(0);
 		if (SUCCEEDED(hr))
 		{
 			LOG(L"Loaded image\n");
@@ -202,18 +199,18 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 
 	}
 
-	if (VirtualKey == VK_NEXT) // Page Down
+	if (virtualKey == VK_NEXT) // Page Down
 	{
 
 		m_ZipManager.Next();
-		HRESULT hr = LoadImage(0);
+		const HRESULT hr = LoadImage(0);
 		if (SUCCEEDED(hr))
 		{
 			LOG(L"Loaded image\n");
 		}
 	}
 
-	if (VirtualKey == VK_ESCAPE)
+	if (virtualKey == VK_ESCAPE)
 	{
 		LOG(L"ESCAPE pressed\n");
 		m_imageX = m_imageY = 0;
@@ -223,27 +220,30 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 	}
 
 
-	if (GetKeyState(VK_CONTROL) & 0x0800 && VirtualKey == 0x4f) // o
+	if (GetKeyState(VK_CONTROL) & 0x0800 && virtualKey == 0x4f) // o
 	{
 		HRESULT hr = OpenArchive();
 		if (SUCCEEDED(hr))
 		{
 			m_imageX = m_imageY = 0;
-			this->LoadImage(+1);
+			hr = this->LoadImage(+1);
+		}
+
+		if (FAILED(hr))
+		{
+			LOG(L"Failed to load picture\n");
 		}
 	}
 	InvalidateRect(m_hwnd, nullptr, true);
 }
 
 
-HRESULT Viewer::LoadFile(std::wstring const& Path)
+HRESULT Viewer::LoadFile(std::wstring const& path) const
 {
-	HRESULT hr = S_OK;
-	mGraphicManager.CreateBitmapFromFile(Path);
-	return hr;
+	return mGraphicManager.CreateBitmapFromFile(path);
 }
 
-HRESULT Viewer::LoadImage(int delta)
+HRESULT Viewer::LoadImage(int delta) const
 {
 	HRESULT hr = S_OK;
 	if (SUCCEEDED(hr))
@@ -251,8 +251,8 @@ HRESULT Viewer::LoadImage(int delta)
 		hr = m_ZipManager.Size() > 0 ? S_OK : E_FAIL;
 	}
 	if (SUCCEEDED(hr))
-	{	
-		std::unique_ptr<ZipFile>& item = m_ZipManager.Current();
+	{
+		const std::unique_ptr<ZipFile>& item = m_ZipManager.Current();
 
 		LOG(L"Create decoder from stream\n");
 		hr = item->RecreateStream();
@@ -283,7 +283,7 @@ HRESULT Viewer::OpenArchive()
 	ofn.nMaxFileTitle = 0;
 	ofn.lpstrInitialDir = nullptr;
 	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
-	HRESULT hr = GetOpenFileNameW(&ofn) ? S_OK : E_FAIL;
+	const HRESULT hr = GetOpenFileNameW(&ofn) ? S_OK : E_FAIL;
 	if (SUCCEEDED(hr))
 	{
 		LOG(L"Received %s\n", ofn.lpstrFile);
@@ -297,35 +297,41 @@ HRESULT Viewer::OpenArchive()
 	return hr;
 }
 
-void Viewer::OnSize(UINT Width, UINT Height) noexcept
+void Viewer::OnSize(const UINT width, const UINT height) noexcept
 {
-	LOG(L"Received WM_SIZE %u,%u\n", Width, Height);
-	mGraphicManager.Resize(Width, Height);
+	LOG(L"Received WM_SIZE %u,%u\n", width, height);
+	mGraphicManager.Resize(width, height);
 }
 
-void Viewer::OnMouseMove(MouseMoveControl ctrl, float x, float y) noexcept
+void Viewer::OnMouseMove(const MouseMoveControl ctrl, const float x, const float y) noexcept
 {
 	switch (ctrl)
 	{
 	case MouseMoveControl::LeftButton:
 	{
-		auto pt = D2D1::Point2F(x, y);
+		const auto [_x, _y] = D2D1::Point2F(x, y);
 
-		float dx = pt.x - m_lastMouseX;
-		float dy = pt.y - m_lastMouseY;
+		const float dx = _x - m_lastMouseX;
+		const float dy = _y - m_lastMouseY;
 
-		m_lastMouseX = pt.x;
-		m_lastMouseY = pt.y;
+		m_lastMouseX = _x;
+		m_lastMouseY = _y;
 
 		m_imageX += dx;
 		m_imageY += dy;
 		InvalidateRect(m_hwnd, nullptr, false);
 	}
 	break;
+	case MouseMoveControl::Ctrl: break;
+	case MouseMoveControl::MiddleButton: break;
+	case MouseMoveControl::RightButton: break;
+	case MouseMoveControl::Shift: break;
+	case MouseMoveControl::XButton1: break;
+	case MouseMoveControl::XButton2: break;
 	}
 }
 
-void Viewer::OnLButtonDown(float x, float y) noexcept
+void Viewer::OnLButtonDown(const float x, const float y) noexcept
 {
 
 	SetCapture(m_hwnd);
@@ -338,7 +344,7 @@ void Viewer::OnLButtonUp(float x, float y) noexcept
 	ReleaseCapture();
 }
 
-void Viewer::OnMouseScrollWheel(short delta) noexcept
+void Viewer::OnMouseScrollWheel(const short delta) noexcept
 {
 	if (delta > 0)
 	{
@@ -354,11 +360,11 @@ void Viewer::OnMouseScrollWheel(short delta) noexcept
 	InvalidateRect(m_hwnd, nullptr, false);
 }
 
-void Viewer::OnChar(wchar_t KeyCode, short RepeatCount) noexcept
+void Viewer::OnChar(wchar_t keyCode, short repeatCount) noexcept
 {
 }
 
-void Viewer::Start()
+void Viewer::Start() noexcept
 {
 	MSG msg{};
 	while (GetMessage(&msg, nullptr, 0, 0) != 0)

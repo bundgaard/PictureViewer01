@@ -3,7 +3,7 @@
 
 #include "Log.h"
 
-class COM
+class Com
 {
 public:
 	enum Type
@@ -19,15 +19,19 @@ public:
 
 
 	};
-	
-	COM(DWORD type)
+
+	explicit Com(const DWORD type)
 	{
 		(void)CoInitializeEx(nullptr, type);
 
 	}
-	~COM()
+	~Com()
 	{
 		LOG(L"COM DTOR\n");
 		CoUninitialize();
 	}
+
+	Com(Com&) = delete;
+	Com operator=(Com&) = delete;
+
 };

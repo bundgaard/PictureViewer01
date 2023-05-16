@@ -12,28 +12,30 @@ struct ZipFile;
 class GraphicsManager;
 class ZipManager;
 
-class Viewer : public BaseWindow<Viewer>
+class Viewer final : public BaseWindow<Viewer>
 {
-public:
-	explicit Viewer(GraphicsManager& graphicManager, ZipManager& zipManager);
-	~Viewer();
 
-	HRESULT Initialize(HINSTANCE hInst);
-	HRESULT LoadFile(std::wstring const& Path);
-	HRESULT LoadImage(int delta);
+public:
+	Viewer(Viewer&) = delete;
+
+	explicit Viewer(GraphicsManager& graphicManager, ZipManager& zipManager);
+	~Viewer() override;
+
+	HRESULT Initialize(HINSTANCE hInst) override;
+	HRESULT LoadFile(std::wstring const& path) const;
+	HRESULT LoadImage(int delta) const;
 	HRESULT OpenArchive();
 
-	virtual void OnSize(UINT Width, UINT Height) noexcept override;
-	virtual LRESULT OnPaint(HWND hwnd) noexcept override;
-	virtual void OnKeyDown(UINT32 VirtualKey) noexcept override;
-	virtual void OnMouseMove(MouseMoveControl ctrl, float x, float y) noexcept override;
-	virtual void OnLButtonDown(float x, float y) noexcept override;
-	virtual void OnLButtonUp(float x, float y) noexcept override;
-	virtual void OnMouseScrollWheel(short delta) noexcept override;
-	virtual void OnChar(wchar_t KeyCode, short RepeatCount) noexcept override;
-	void Start();
-protected:
-	std::vector<std::unique_ptr<ZipFile>> ReadZip(std::wstring const& Filename);
+	void OnSize(UINT width, UINT height) noexcept override;
+	LRESULT OnPaint(HWND hwnd) noexcept override;
+	void OnKeyDown(UINT32 virtualKey) noexcept override;
+	void OnMouseMove(MouseMoveControl ctrl, float x, float y) noexcept override;
+	void OnLButtonDown(float x, float y) noexcept override;
+	void OnLButtonUp(float x, float y) noexcept override;
+	void OnMouseScrollWheel(short delta) noexcept override;
+	void OnChar(wchar_t keyCode, short repeatCount) noexcept override;
+	static void Start() noexcept;
+
 private:
 	GraphicsManager& mGraphicManager;
 	ZipManager& m_ZipManager;
@@ -43,10 +45,6 @@ private:
 	float m_imageX{};
 	float m_imageY{};
 	float m_scaleFactor = 1.0;
-
-	
-
-	
 
 };
 
