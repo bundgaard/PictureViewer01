@@ -139,8 +139,9 @@
     <ClCompile Include="GraphicsManager.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="String.cpp" />
     <ClCompile Include="Viewer.cpp" />
-    <ClCompile Include="ZipReader.cpp" />
+    <ClCompile Include="ZipManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
@@ -151,9 +152,10 @@
     <ClInclude Include="GraphicsManager.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="SafeRelease.h" />
+    <ClInclude Include="String.h" />
     <ClInclude Include="Viewer.h" />
     <ClInclude Include="ZipFile.h" />
-    <ClInclude Include="ZipReader.h" />
+    <ClInclude Include="ZipManager.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

@@ -10,11 +10,12 @@
 
 struct ZipFile;
 class GraphicsManager;
+class ZipManager;
 
 class Viewer : public BaseWindow<Viewer>
 {
 public:
-	explicit Viewer(GraphicsManager& graphicManager);
+	explicit Viewer(GraphicsManager& graphicManager, ZipManager& zipManager);
 	~Viewer();
 
 	HRESULT Initialize(HINSTANCE hInst);
@@ -35,6 +36,7 @@ protected:
 	std::vector<std::unique_ptr<ZipFile>> ReadZip(std::wstring const& Filename);
 private:
 	GraphicsManager& mGraphicManager;
+	ZipManager& m_ZipManager;
 
 	float m_lastMouseX{};
 	float m_lastMouseY{};
@@ -42,9 +44,9 @@ private:
 	float m_imageY{};
 	float m_scaleFactor = 1.0;
 
-	int m_currentPage = -1;
-	std::vector<std::unique_ptr<ZipFile>> m_zip_files;
-	std::vector<HGLOBAL> m_zip_globals;
+	
+
+	
 
 };
 

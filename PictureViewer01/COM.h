@@ -1,6 +1,7 @@
 #pragma once
 #include <Windows.h>
 
+#include "Log.h"
 
 class COM
 {
@@ -26,6 +27,7 @@ public:
 	}
 	~COM()
 	{
+		LOG(L"COM DTOR\n");
 		CoUninitialize();
 	}
 };

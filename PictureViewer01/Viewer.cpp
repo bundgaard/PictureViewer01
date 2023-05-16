@@ -2,7 +2,7 @@
 #include "Viewer.h"
 #include <windowsx.h>
 
-#include <zip.h>
+
 
 #include <sstream>
 #include <array>
@@ -14,32 +14,22 @@
 #include "GraphicsManager.h"
 #include <strsafe.h>
 #include <algorithm>
+
+#include "ZipManager.h"
+
 namespace
 {
+
+	constexpr wchar_t VIEWER_CLASSNAME[] = L"CPICTUREVIEWER01";
 	inline float GetRatio(float width, float height)
 	{
 		return width / height;
 	}
-	inline void RemoveDuplicates(std::vector<std::unique_ptr<ZipFile>>& list)
-	{
-		auto Compare = [&](std::unique_ptr<ZipFile>& A, std::unique_ptr<ZipFile>& B) {
-			return A->Name < B->Name;
-		};
 
-		std::sort(list.begin(), list.end(), Compare);
-		auto EraseComparator = [](std::unique_ptr<ZipFile>& A, std::unique_ptr<ZipFile>& B) {
-			return A->Name == B->Name;
-		};
-		auto it = std::unique(list.begin(), list.end(), EraseComparator);
-
-		list.erase(it, list.end());
-	}
 }
 
 
-Viewer::Viewer(GraphicsManager& graphicManager)
-	: mGraphicManager(graphicManager)
-	, m_currentPage(-1)
+Viewer::Viewer(GraphicsManager& graphicManager, ZipManager& zipManager) : mGraphicManager(graphicManager), m_ZipManager(zipManager)
 {
 }
 
@@ -58,7 +48,7 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 		wc.cbSize = sizeof(WNDCLASSEX);
 		wc.cbWndExtra = sizeof(LONG_PTR);
 		wc.cbClsExtra = 0;
-		wc.lpszClassName = L"CPICTUREVIEWER01";
+		wc.lpszClassName = VIEWER_CLASSNAME;
 		wc.lpfnWndProc = (WNDPROC)Viewer::s_WndProc;
 		wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
 		wc.hIcon = wc.hIconSm = LoadIcon(nullptr, IDI_APPLICATION);
@@ -153,7 +143,7 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 				scaledHeight = ClientSize.height - (marginTop + marginBottom);
 				scaledWidth = scaledHeight * BitmapRatio;
 			}
-			
+
 
 			auto ClientRect = D2D1::RectF(
 				(((ClientSize.width - marginLeft) - scaledWidth) / 2.0f),
@@ -203,8 +193,8 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 
 	if (VirtualKey == VK_PRIOR) // PageUp
 	{
-
-		HRESULT hr = this->LoadImage(-1);
+		m_ZipManager.Previous();
+		HRESULT hr = this->LoadImage(0);
 		if (SUCCEEDED(hr))
 		{
 			LOG(L"Loaded image\n");
@@ -215,7 +205,8 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 	if (VirtualKey == VK_NEXT) // Page Down
 	{
 
-		HRESULT hr = this->LoadImage(+1);
+		m_ZipManager.Next();
+		HRESULT hr = LoadImage(0);
 		if (SUCCEEDED(hr))
 		{
 			LOG(L"Loaded image\n");
@@ -226,7 +217,7 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 	{
 		LOG(L"ESCAPE pressed\n");
 		m_imageX = m_imageY = 0;
-		m_zip_files.clear();
+		m_ZipManager.Clear();
 		mGraphicManager.ReleaseConverter();
 		mGraphicManager.ReleaseDeviceResources();
 	}
@@ -257,24 +248,11 @@ HRESULT Viewer::LoadImage(int delta)
 	HRESULT hr = S_OK;
 	if (SUCCEEDED(hr))
 	{
-		hr = m_zip_files.size() > 0 ? S_OK : E_FAIL;
+		hr = m_ZipManager.Size() > 0 ? S_OK : E_FAIL;
 	}
 	if (SUCCEEDED(hr))
-	{
-		m_currentPage += delta;
-
-
-		if (m_currentPage < 0)
-		{
-			m_currentPage = static_cast<int>(m_zip_files.size()) - 1;
-		}
-		else if (m_currentPage >= static_cast<int>(m_zip_files.size()))
-		{
-			m_currentPage = 0;
-		}
-
-
-		std::unique_ptr<ZipFile>& item = m_zip_files.at(m_currentPage);
+	{	
+		std::unique_ptr<ZipFile>& item = m_ZipManager.Current();
 
 		LOG(L"Create decoder from stream\n");
 		hr = item->RecreateStream();
@@ -312,9 +290,8 @@ HRESULT Viewer::OpenArchive()
 
 
 		m_scaleFactor = 1.0f;
-		m_zip_files.clear();
-		m_zip_files = ReadZip(ofn.lpstrFile);
-		m_currentPage = -1;
+		m_ZipManager.Clear();
+		m_ZipManager.ReadZip(ofn.lpstrFile);
 	}
 
 	return hr;
@@ -389,54 +366,4 @@ void Viewer::Start()
 		TranslateMessage(&msg);
 		DispatchMessageW(&msg);
 	}
-}
-
-std::vector<std::unique_ptr<ZipFile>> Viewer::ReadZip(std::wstring const& Filename)
-{
-	std::vector<std::unique_ptr<ZipFile>> Files;
-
-	zip* archive = zip_open(FromWideString(Filename).c_str(), 0, nullptr);
-	if (!archive)
-	{
-		Log(L"Failed to open zip archive\n");
-		return {};
-	}
-
-	auto NumFiles = zip_get_num_files(archive);
-	Files.reserve(NumFiles);
-
-	for (int i = 0; i < NumFiles; i++)
-	{
-		struct zip_stat stat;
-		zip_stat_index(archive, i, 0, &stat);
-
-		zip_file* File = zip_fopen_index(archive, i, 0);
-		if (File)
-		{
-			std::unique_ptr<ZipFile> ptr = std::make_unique<ZipFile>(stat.name, static_cast<size_t>(stat.size));
-			std::vector<byte> Bytes;
-			Bytes.resize(ptr->Size);
-			zip_int64_t bytes_read = zip_fread(File, Bytes.data(), Bytes.size()); // TODO: could actually have a list and loop through it before hand or just do the work and do it after? I choose the latter.
-			HRESULT hr = S_OK;
-			hr = bytes_read == ptr->Size ? S_OK : E_FAIL;
-			if (SUCCEEDED(hr))
-			{
-				hr = ptr->Write(std::move(Bytes));
-			}
-
-			if (SUCCEEDED(hr))
-			{
-				Files.push_back(std::move(ptr));
-				zip_fclose(File);
-			}
-		}
-	}
-	zip_close(archive);
-	auto Count = Files.size();
-	LOG(L"Loaded %d files\n", Count);
-	// Clean the zip list
-	RemoveDuplicates(Files);
-	LOG(L"Erased %d\n", Count - Files.size());
-
-	return Files;
 }
