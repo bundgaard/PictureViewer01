@@ -2,31 +2,38 @@
 #include "Application.h"
 
 
-inline std::wstring ToWideString(std::string const& Text) //TODO: fix to separate CPP file
+inline std::wstring ToWideString(std::string const& text) //TODO: fix to separate CPP file
 {
+	const int textSize = static_cast<int>(text.size());
+	auto const size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), textSize, nullptr, 0);
+	std::wstring result;
+	result.resize(size);
 
-	int TextSize = static_cast<int>(Text.size());
-	auto const Size = MultiByteToWideChar(CP_UTF8, 0, Text.c_str(), TextSize, nullptr, 0);
-	std::wstring Result;
-	Result.resize(Size);
-	
-	MultiByteToWideChar(CP_UTF8, 0, Text.c_str(), TextSize, Result.data(), TextSize);
-	return Result;
+	MultiByteToWideChar(CP_UTF8, 0, text.c_str(), textSize, result.data(), textSize);
+	return result;
 }
-inline std::string FromWideString(std::wstring const& Text) //TODO: fix to separate CPP file
+inline std::string FromWideString(std::wstring const& text) //TODO: fix to separate CPP file
 {
-	int TextSize = static_cast<int>(Text.size());
-	auto const Size = WideCharToMultiByte(CP_UTF8, 0, Text.data(), TextSize, nullptr, 0, nullptr, nullptr);
-	std::string Result{};
-	Result.resize(Size);
+	const int textSize = static_cast<int>(text.size());
+	auto const size = WideCharToMultiByte(
+		CP_UTF8,
+		0,
+		text.data(),
+		textSize,
+		nullptr,
+		0,
+		nullptr,
+		nullptr);
+	std::string result{};
+	result.resize(size);
 	WideCharToMultiByte(
 		CP_UTF8,
 		0,
-		Text.c_str(),
-		TextSize,
-		Result.data(),
-		TextSize,
+		text.c_str(),
+		textSize,
+		result.data(),
+		textSize,
 		"",
 		nullptr);
-	return Result;
+	return result;
 }

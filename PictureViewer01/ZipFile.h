@@ -17,7 +17,7 @@ struct ZipFile
 	HGLOBAL Global;
 	IStream* Stream;
 
-	ZipFile(std::string const name, size_t size) :
+	ZipFile(std::string const& name, const size_t size) :
 		Name(name),
 		Size(size),
 		GlobalData(nullptr),
@@ -35,12 +35,12 @@ struct ZipFile
 		SafeRelease(Stream);
 	}
 
-	HRESULT Write(std::vector<byte>&& Bytes)
+	HRESULT Write(std::vector<byte>&& bytes)
 	{
 		HRESULT hr = S_OK;
 		if (SUCCEEDED(hr))
 		{
-			Global = GlobalAlloc(GMEM_MOVEABLE, Bytes.size());
+			Global = GlobalAlloc(GMEM_MOVEABLE, bytes.size());
 			hr = Global ? S_OK : E_FAIL;
 		}
 		if (SUCCEEDED(hr))
@@ -51,7 +51,7 @@ struct ZipFile
 
 		if (SUCCEEDED(hr))
 		{
-			CopyMemory(GlobalData, Bytes.data(), Bytes.size());
+			CopyMemory(GlobalData, bytes.data(), bytes.size());
 			hr = GlobalUnlock(GlobalData) ? S_OK : E_FAIL;
 		}
 
