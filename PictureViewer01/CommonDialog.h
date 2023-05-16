@@ -10,6 +10,9 @@ class CommonDialog
 {
 	IFileDialog* mFileDialog;
 public:
+	CommonDialog(CommonDialog&) = delete;
+	CommonDialog operator=(CommonDialog&) = delete;
+
 	CommonDialog();
 	~CommonDialog();
 	HRESULT Initialize();

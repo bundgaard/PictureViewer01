@@ -14,17 +14,17 @@ namespace
 {
 	inline void RemoveDuplicates(std::vector<std::unique_ptr<ZipFile>>& list)
 	{
-		auto Compare = [&](std::unique_ptr<ZipFile>& A, std::unique_ptr<ZipFile>& B) {
+		auto compare = [&](const std::unique_ptr<ZipFile>& A, const std::unique_ptr<ZipFile>& B) {
 			return A->Name < B->Name;
 		};
 
-		std::sort(list.begin(), list.end(), Compare);
-		auto EraseComparator = [](std::unique_ptr<ZipFile>& A, std::unique_ptr<ZipFile>& B) {
+		std::ranges::sort(list, compare);
+		auto eraseComparator = [](const std::unique_ptr<ZipFile>& A, const std::unique_ptr<ZipFile>& B) {
 			return A->Name == B->Name;
 		};
-		auto it = std::unique(list.begin(), list.end(), EraseComparator);
 
-		list.erase(it, list.end());
+
+		list.erase(std::ranges::unique(list, eraseComparator).begin(), list.end());
 		LOG(L"End of Remove Duplicates\n");
 	}
 }
@@ -37,36 +37,35 @@ ZipManager::~ZipManager()
 	LOG(L"ZipManager DTOR\n");
 }
 
-void ZipManager::ReadZip(std::wstring const& Filename)
+void ZipManager::ReadZip(std::wstring const& filename)
 {
 	Clear();
-	zip* archive = zip_open(FromWideString(Filename).c_str(), 0, nullptr);
+	zip* archive = zip_open(FromWideString(filename).c_str(), 0, nullptr);
 	if (!archive)
 	{
 		Log(L"Failed to open zip archive\n");
 		return;
 	}
 
-	auto NumFiles = zip_get_num_files(archive);
-	m_zip_files.reserve(NumFiles);
+	const auto numFiles = zip_get_num_files(archive);
+	m_zip_files.reserve(numFiles);
 
-	for (int i = 0; i < NumFiles; i++)
+	for (int i = 0; i < numFiles; i++)
 	{
-		struct zip_stat stat;
+		struct zip_stat stat{};
 		zip_stat_index(archive, i, 0, &stat);
 
-		zip_file* File = zip_fopen_index(archive, i, 0);
-		if (File)
+		if (zip_file* File = zip_fopen_index(archive, i, 0))
 		{
-			std::unique_ptr<ZipFile> ptr = std::make_unique<ZipFile>(stat.name, static_cast<size_t>(stat.size));
-			std::vector<byte> Bytes;
-			Bytes.resize(ptr->Size);
-			zip_int64_t bytes_read = zip_fread(File, Bytes.data(), Bytes.size()); // TODO: could actually have a list and loop through it before hand or just do the work and do it after? I choose the latter.
+			auto ptr = std::make_unique<ZipFile>(stat.name, static_cast<size_t>(stat.size));
+			std::vector<byte> bytes;
+			bytes.resize(ptr->Size);
+			const zip_int64_t bytesRead = zip_fread(File, bytes.data(), bytes.size()); // TODO: could actually have a list and loop through it before hand or just do the work and do it after? I choose the latter.
 			HRESULT hr = S_OK;
-			hr = bytes_read == ptr->Size ? S_OK : E_FAIL;
+			hr = bytesRead == ptr->Size ? S_OK : E_FAIL;
 			if (SUCCEEDED(hr))
 			{
-				hr = ptr->Write(std::move(Bytes));
+				hr = ptr->Write(std::move(bytes));
 			}
 
 			if (SUCCEEDED(hr))
@@ -77,11 +76,11 @@ void ZipManager::ReadZip(std::wstring const& Filename)
 		}
 	}
 	zip_close(archive);
-	auto Count = m_zip_files.size();
-	LOG(L"Loaded %d files\n", Count);
+	const auto count = m_zip_files.size();
+	LOG(L"Loaded %d files\n", count);
 	// Clean the zip list
 	RemoveDuplicates(m_zip_files);
-	LOG(L"Erased %d\n", Count - m_zip_files.size());
+	LOG(L"Erased %d\n", count - m_zip_files.size());
 }
 
 void ZipManager::Clear()
@@ -90,7 +89,7 @@ void ZipManager::Clear()
 	m_currentPage = 0;
 }
 
-size_t ZipManager::Size()
+size_t ZipManager::Size() const
 {
 	return m_zip_files.size();
 }

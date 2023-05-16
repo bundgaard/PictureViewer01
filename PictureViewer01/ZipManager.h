@@ -13,9 +13,9 @@ class ZipManager
 public:
 	ZipManager();
 	~ZipManager();
-	void ReadZip(std::wstring const& Filename);
+	void ReadZip(std::wstring const& filename);
 	void Clear();
-	size_t Size();
+	size_t Size() const;
 	std::unique_ptr<ZipFile>& Current();
 	void Next();
 	void Previous();

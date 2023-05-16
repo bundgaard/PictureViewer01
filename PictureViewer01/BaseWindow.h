@@ -20,7 +20,7 @@ class BaseWindow
 {
 
 public:
-	static Clz* Handle(HWND hwnd) noexcept
+	static Clz* Handle(const HWND hwnd) noexcept
 	{
 		return reinterpret_cast<Clz*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
 	}
@@ -31,22 +31,22 @@ public:
 	[[nodiscard]] virtual LRESULT OnPaint(HWND hwnd) noexcept = 0;
 
 
-	virtual void OnSize(UINT Width, UINT Height) noexcept = 0;
+	virtual void OnSize(UINT width, UINT height) noexcept = 0;
 	virtual void OnLButtonDown(float x, float y) noexcept = 0;
 	virtual void OnLButtonUp(float x, float y) noexcept = 0;
 	virtual void OnMouseMove(MouseMoveControl ctrl, float x, float y) noexcept = 0;
 	virtual void OnMouseScrollWheel(short delta) noexcept = 0;
-	virtual void OnKeyDown(UINT32 VirtualKey) noexcept = 0;
-	virtual void OnChar(wchar_t KeyCode, short RepeatCount) noexcept = 0;
+	virtual void OnKeyDown(UINT32 virtualKey) noexcept = 0;
+	virtual void OnChar(wchar_t keyCode, short repeatCount) noexcept = 0;
 
 
-	[[nodiscard]] virtual LRESULT OnNcCreate(WPARAM wparam, LPARAM lparam) noexcept
+	[[nodiscard]] virtual LRESULT OnNcCreate(const WPARAM wparam, const LPARAM lparam) noexcept
 	{
 		OutputDebugStringW(L"In OnNcCreate\n");
 		SetWindowLongPtrW(m_hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
 		return DefWindowProcW(m_hwnd, WM_NCCREATE, wparam, lparam);
 	}
-	[[nodiscard]] virtual LRESULT WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) noexcept
+	[[nodiscard]] virtual LRESULT WndProc(const HWND hwnd, const UINT msg, WPARAM wparam, LPARAM lparam) noexcept
 	{
 		switch (msg)
 		{
@@ -80,30 +80,30 @@ public:
 		}
 		case WM_MOUSEMOVE:
 		{
-			OnMouseMove(MouseMoveControl(wparam), static_cast<float>(GET_X_LPARAM(lparam)), static_cast<float>(GET_Y_LPARAM(lparam)));
+			OnMouseMove(static_cast<MouseMoveControl>(wparam), static_cast<float>(GET_X_LPARAM(lparam)), static_cast<float>(GET_Y_LPARAM(lparam)));
 			break;
 		}
 
 		case WM_SIZE:
 		{
-			UINT Width = LOWORD(lparam);
-			UINT Height = HIWORD(lparam);
-			OnSize(Width, Height);
+			const UINT width = LOWORD(lparam);
+			const UINT height = HIWORD(lparam);
+			OnSize(width, height);
 			break;
 		}
 		case WM_PAINT:
 		{
 			PAINTSTRUCT ps;
 			BeginPaint(hwnd, &ps);
-			auto Result = OnPaint(hwnd);
+			const auto result = OnPaint(hwnd);
 			EndPaint(hwnd, &ps);
-			return Result;
+			return result;
 		}
 		case WM_CHAR:
 		{
 			OnChar(
-				(TCHAR)(wparam),
-				(int)(short)LOWORD(lparam)
+				static_cast<TCHAR>(wparam),
+				static_cast<short>(LOWORD(lparam))
 			);
 			break;
 		}
@@ -118,8 +118,8 @@ public:
 	{
 		if (msg == WM_NCCREATE)
 		{
-			auto cs = reinterpret_cast<LPCREATESTRUCT>(lparam);
-			Clz* pThis = reinterpret_cast<Clz*>(cs->lpCreateParams);
+			const auto cs = reinterpret_cast<LPCREATESTRUCT>(lparam);
+			Clz* pThis = static_cast<Clz*>(cs->lpCreateParams);
 			pThis->m_hwnd = hwnd;
 			return pThis->OnNcCreate(wparam, lparam);
 		}
@@ -130,17 +130,12 @@ public:
 		return DefWindowProcW(hwnd, msg, wparam, lparam);
 	}
 
-
-public:
 	HINSTANCE m_hInst{};
 	HWND m_hwnd{};
 };
 
 template<typename T>
-inline BaseWindow<T>::~BaseWindow()
-{
-
-}
+BaseWindow<T>::~BaseWindow() = default;
 //template<typename T>
 //HRESULT  BaseWindow<T>::Initialize(HINSTANCE hInst) noexcept {}
 //
