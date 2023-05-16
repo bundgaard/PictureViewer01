@@ -14,6 +14,27 @@
 #include "GraphicsManager.h"
 #include <strsafe.h>
 #include <algorithm>
+namespace
+{
+	inline float GetRatio(float width, float height)
+	{
+		return width / height;
+	}
+	inline void RemoveDuplicates(std::vector<std::unique_ptr<ZipFile>>& list)
+	{
+		auto Compare = [&](std::unique_ptr<ZipFile>& A, std::unique_ptr<ZipFile>& B) {
+			return A->Name < B->Name;
+		};
+
+		std::sort(list.begin(), list.end(), Compare);
+		auto EraseComparator = [](std::unique_ptr<ZipFile>& A, std::unique_ptr<ZipFile>& B) {
+			return A->Name == B->Name;
+		};
+		auto it = std::unique(list.begin(), list.end(), EraseComparator);
+
+		list.erase(it, list.end());
+	}
+}
 
 
 Viewer::Viewer(GraphicsManager& graphicManager)
@@ -75,10 +96,6 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 
 
 
-inline float GetRatio(float width, float height)
-{
-	return width / height;
-}
 
 inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 {
@@ -107,35 +124,42 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 			mGraphicManager.Brush()->SetColor(color);
 
 			mGraphicManager.DrawTextCentered(L"[CTRL] + [o] - To open archive.", 50, D2D1::ColorF::White);
-			mGraphicManager.DrawTextCentered(L"[PageUp] and [PageDown] to move back and forth between images in archive.", 75, D2D1::ColorF::White);
-			mGraphicManager.DrawTextCentered(L"[ESC] to unload archive and return back to this menu.", 100, D2D1::ColorF::White);
+			mGraphicManager.DrawTextCentered(L"[PageUp] and [PageDown] to move back and forth between images in archive.", 100, D2D1::ColorF::White);
+			mGraphicManager.DrawTextCentered(L"[ESC] to unload archive and return back to this menu.", 150, D2D1::ColorF::White);
 		}
 		if (mGraphicManager.Bitmap())
 		{
 			auto BitmapSize = mGraphicManager.Bitmap()->GetSize();
 
+			const float marginLeft = 50.0f;
+			const float marginRight = 50.0f;
+			const float marginTop = 50.0f;
+			const float marginBottom = 50.0f;
+
 			auto BitmapRatio = GetRatio(BitmapSize.width, BitmapSize.height);
-			auto WindowRatio = GetRatio(ClientSize.width - 100.0f, ClientSize.height - 100.0f); // 100.0f are the imaginary borders, will be moved somewhere
+			auto WindowRatio = GetRatio(ClientSize.width - (marginLeft + marginRight), ClientSize.height - (marginTop + marginBottom)); // 100.0f are the imaginary borders, will be moved somewhere
 
 			float scaledWidth{};
 			float scaledHeight{};
 
+
 			if (BitmapRatio > WindowRatio)
 			{
-				scaledWidth = ClientSize.width - 100.0f;
+				scaledWidth = ClientSize.width - (marginLeft + marginRight);
 				scaledHeight = scaledWidth / BitmapRatio;
 			}
 			else
 			{
-				scaledHeight = ClientSize.height - 100.0f;
+				scaledHeight = ClientSize.height - (marginTop + marginBottom);
 				scaledWidth = scaledHeight * BitmapRatio;
 			}
+			
 
 			auto ClientRect = D2D1::RectF(
-				(((ClientSize.width - 50.0f) - scaledWidth) / 2.0f),
-				(((ClientSize.height - 50.0f) - scaledHeight) / 2.0f),
-				(((ClientSize.width - 50.0f) + scaledWidth) / 2.0f),
-				(((ClientSize.height - 50.0f) + scaledHeight) / 2.0f)
+				(((ClientSize.width - marginLeft) - scaledWidth) / 2.0f),
+				(((ClientSize.height - marginTop) - scaledHeight) / 2.0f),
+				(((ClientSize.width + marginRight) + scaledWidth) / 2.0f),
+				(((ClientSize.height + marginBottom) + scaledHeight) / 2.0f)
 			);
 
 			D2D1_MATRIX_3X2_F transform{};
@@ -176,25 +200,7 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 	{
 		m_imageX = m_imageY = 0.0f;
 	}
-	//	if (VirtualKey == VK_SPACE)
-	//	{
-	//		m_imageX = m_imageY = 0;
-	//		m_scaleFactor = 1.0f;
-	//		m_zip_files.clear();
-	//#if 0
-	//		m_zip_files = ReadZip(L"C:\\Temp\\7901387a-b652-496f-b378-08c69c34f88f.zip"); //  ReadZip(L"C:\\Code\\pics.zip");
-	//#else
-	//		m_zip_files = ReadZip(L"C:\\Code\\pics.zip");
-	//#endif
-	//		
-	//		HRESULT hr = this->LoadFile(PICTURE);
-	//		if (SUCCEEDED(hr))
-	//		{
-	//			Log(L"Loaded file\n");
-	//		}
-	//		m_currentPage = -1;
-	//
-	//	}
+
 	if (VirtualKey == VK_PRIOR) // PageUp
 	{
 
@@ -383,21 +389,6 @@ void Viewer::Start()
 		TranslateMessage(&msg);
 		DispatchMessageW(&msg);
 	}
-}
-
-inline void RemoveDuplicates(std::vector<std::unique_ptr<ZipFile>>& list)
-{
-	auto Compare = [&](std::unique_ptr<ZipFile>& A, std::unique_ptr<ZipFile>& B) {
-		return A->Name < B->Name;
-	};
-
-	std::sort(list.begin(), list.end(), Compare);
-	auto EraseComparator = [](std::unique_ptr<ZipFile>& A, std::unique_ptr<ZipFile>& B) {
-		return A->Name == B->Name;
-	};
-	auto it = std::unique(list.begin(), list.end(), EraseComparator);
-
-	list.erase(it, list.end());
 }
 
 std::vector<std::unique_ptr<ZipFile>> Viewer::ReadZip(std::wstring const& Filename)
