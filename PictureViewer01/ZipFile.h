@@ -3,14 +3,11 @@
 #include <string>
 
 #include <Windows.h>
+#include <combaseapi.h>
 
 #include "SafeRelease.h"
+#include "Log.h"
 
-struct ZipMemory
-{
-	void* GlobalData;
-	HGLOBAL Global;
-};
 
 struct ZipFile
 {
@@ -32,7 +29,7 @@ struct ZipFile
 
 	~ZipFile()
 	{
-		OutputDebugStringW(L"ZipFile destructor\n");
+		LOG(L"ZipFile destructor\n");
 		if (Global)
 			GlobalFree(Global);
 		SafeRelease(Stream);
@@ -66,12 +63,4 @@ struct ZipFile
 		SafeRelease(Stream);
 		return CreateStreamOnHGlobal(Global, false, &Stream);
 	}
-};
-
-struct ZipList
-{
-	std::vector<ZipFile> m_list;
-	std::vector<ZipMemory> m_memory_list;
-
-
 };

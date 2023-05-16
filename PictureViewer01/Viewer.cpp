@@ -2,7 +2,7 @@
 #include "Viewer.h"
 #include <windowsx.h>
 
-#include <zip.h>
+
 
 #include <sstream>
 #include <array>
@@ -13,12 +13,23 @@
 #include "Converter.h"
 #include "GraphicsManager.h"
 #include <strsafe.h>
+#include <algorithm>
+
+#include "ZipManager.h"
+
+namespace
+{
+
+	constexpr wchar_t VIEWER_CLASSNAME[] = L"CPICTUREVIEWER01";
+	inline float GetRatio(float width, float height)
+	{
+		return width / height;
+	}
+
+}
 
 
-
-Viewer::Viewer(GraphicsManager& graphicManager)
-	: mGraphicManager(graphicManager)
-	, m_currentPage(-1)
+Viewer::Viewer(GraphicsManager& graphicManager, ZipManager& zipManager) : mGraphicManager(graphicManager), m_ZipManager(zipManager)
 {
 }
 
@@ -37,7 +48,7 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 		wc.cbSize = sizeof(WNDCLASSEX);
 		wc.cbWndExtra = sizeof(LONG_PTR);
 		wc.cbClsExtra = 0;
-		wc.lpszClassName = L"CPICTUREVIEWER01";
+		wc.lpszClassName = VIEWER_CLASSNAME;
 		wc.lpfnWndProc = (WNDPROC)Viewer::s_WndProc;
 		wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
 		wc.hIcon = wc.hIconSm = LoadIcon(nullptr, IDI_APPLICATION);
@@ -75,10 +86,6 @@ HRESULT Viewer::Initialize(HINSTANCE hInst)
 
 
 
-inline float GetRatio(float width, float height)
-{
-	return width / height;
-}
 
 inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 {
@@ -107,35 +114,42 @@ inline LRESULT Viewer::OnPaint(HWND hwnd) noexcept
 			mGraphicManager.Brush()->SetColor(color);
 
 			mGraphicManager.DrawTextCentered(L"[CTRL] + [o] - To open archive.", 50, D2D1::ColorF::White);
-			mGraphicManager.DrawTextCentered(L"[PageUp] and [PageDown] to move back and forth between images in archive.", 75, D2D1::ColorF::White);
-			mGraphicManager.DrawTextCentered(L"[ESC] to unload archive and return back to this menu.", 100, D2D1::ColorF::White);
+			mGraphicManager.DrawTextCentered(L"[PageUp] and [PageDown] to move back and forth between images in archive.", 100, D2D1::ColorF::White);
+			mGraphicManager.DrawTextCentered(L"[ESC] to unload archive and return back to this menu.", 150, D2D1::ColorF::White);
 		}
 		if (mGraphicManager.Bitmap())
 		{
 			auto BitmapSize = mGraphicManager.Bitmap()->GetSize();
 
+			const float marginLeft = 50.0f;
+			const float marginRight = 50.0f;
+			const float marginTop = 50.0f;
+			const float marginBottom = 50.0f;
+
 			auto BitmapRatio = GetRatio(BitmapSize.width, BitmapSize.height);
-			auto WindowRatio = GetRatio(ClientSize.width - 100.0f, ClientSize.height - 100.0f); // 100.0f are the imaginary borders, will be moved somewhere
+			auto WindowRatio = GetRatio(ClientSize.width - (marginLeft + marginRight), ClientSize.height - (marginTop + marginBottom)); // 100.0f are the imaginary borders, will be moved somewhere
 
 			float scaledWidth{};
 			float scaledHeight{};
 
+
 			if (BitmapRatio > WindowRatio)
 			{
-				scaledWidth = ClientSize.width - 100.0f;
+				scaledWidth = ClientSize.width - (marginLeft + marginRight);
 				scaledHeight = scaledWidth / BitmapRatio;
 			}
 			else
 			{
-				scaledHeight = ClientSize.height - 100.0f;
+				scaledHeight = ClientSize.height - (marginTop + marginBottom);
 				scaledWidth = scaledHeight * BitmapRatio;
 			}
 
+
 			auto ClientRect = D2D1::RectF(
-				(((ClientSize.width - 50.0f) - scaledWidth) / 2.0f),
-				(((ClientSize.height - 50.0f) - scaledHeight) / 2.0f),
-				(((ClientSize.width - 50.0f) + scaledWidth) / 2.0f),
-				(((ClientSize.height - 50.0f) + scaledHeight) / 2.0f)
+				(((ClientSize.width - marginLeft) - scaledWidth) / 2.0f),
+				(((ClientSize.height - marginTop) - scaledHeight) / 2.0f),
+				(((ClientSize.width + marginRight) + scaledWidth) / 2.0f),
+				(((ClientSize.height + marginBottom) + scaledHeight) / 2.0f)
 			);
 
 			D2D1_MATRIX_3X2_F transform{};
@@ -176,29 +190,11 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 	{
 		m_imageX = m_imageY = 0.0f;
 	}
-	//	if (VirtualKey == VK_SPACE)
-	//	{
-	//		m_imageX = m_imageY = 0;
-	//		m_scaleFactor = 1.0f;
-	//		m_zip_files.clear();
-	//#if 0
-	//		m_zip_files = ReadZip(L"C:\\Temp\\7901387a-b652-496f-b378-08c69c34f88f.zip"); //  ReadZip(L"C:\\Code\\pics.zip");
-	//#else
-	//		m_zip_files = ReadZip(L"C:\\Code\\pics.zip");
-	//#endif
-	//		
-	//		HRESULT hr = this->LoadFile(PICTURE);
-	//		if (SUCCEEDED(hr))
-	//		{
-	//			Log(L"Loaded file\n");
-	//		}
-	//		m_currentPage = -1;
-	//
-	//	}
+
 	if (VirtualKey == VK_PRIOR) // PageUp
 	{
-
-		HRESULT hr = this->LoadImage(-1);
+		m_ZipManager.Previous();
+		HRESULT hr = this->LoadImage(0);
 		if (SUCCEEDED(hr))
 		{
 			LOG(L"Loaded image\n");
@@ -209,7 +205,8 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 	if (VirtualKey == VK_NEXT) // Page Down
 	{
 
-		HRESULT hr = this->LoadImage(+1);
+		m_ZipManager.Next();
+		HRESULT hr = LoadImage(0);
 		if (SUCCEEDED(hr))
 		{
 			LOG(L"Loaded image\n");
@@ -220,7 +217,7 @@ void Viewer::OnKeyDown(UINT32 VirtualKey) noexcept
 	{
 		LOG(L"ESCAPE pressed\n");
 		m_imageX = m_imageY = 0;
-		m_zip_files.clear();
+		m_ZipManager.Clear();
 		mGraphicManager.ReleaseConverter();
 		mGraphicManager.ReleaseDeviceResources();
 	}
@@ -251,24 +248,11 @@ HRESULT Viewer::LoadImage(int delta)
 	HRESULT hr = S_OK;
 	if (SUCCEEDED(hr))
 	{
-		hr = m_zip_files.size() > 0 ? S_OK : E_FAIL;
+		hr = m_ZipManager.Size() > 0 ? S_OK : E_FAIL;
 	}
 	if (SUCCEEDED(hr))
-	{
-		m_currentPage += delta;
-
-
-		if (m_currentPage < 0)
-		{
-			m_currentPage = static_cast<int>(m_zip_files.size()) - 1;
-		}
-		else if (m_currentPage >= static_cast<int>(m_zip_files.size()))
-		{
-			m_currentPage = 0;
-		}
-
-
-		std::unique_ptr<ZipFile>& item = m_zip_files.at(m_currentPage);
+	{	
+		std::unique_ptr<ZipFile>& item = m_ZipManager.Current();
 
 		LOG(L"Create decoder from stream\n");
 		hr = item->RecreateStream();
@@ -306,9 +290,8 @@ HRESULT Viewer::OpenArchive()
 
 
 		m_scaleFactor = 1.0f;
-		m_zip_files.clear();
-		m_zip_files = ReadZip(ofn.lpstrFile);
-		m_currentPage = -1;
+		m_ZipManager.Clear();
+		m_ZipManager.ReadZip(ofn.lpstrFile);
 	}
 
 	return hr;
@@ -383,50 +366,4 @@ void Viewer::Start()
 		TranslateMessage(&msg);
 		DispatchMessageW(&msg);
 	}
-}
-
-
-
-std::vector<std::unique_ptr<ZipFile>> Viewer::ReadZip(std::wstring const& Filename)
-{
-	std::vector<std::unique_ptr<ZipFile>> Files;
-
-	zip* archive = zip_open(FromWideString(Filename).c_str(), 0, nullptr);
-	if (!archive)
-	{
-		Log(L"Failed to open zip archive\n");
-		return {};
-	}
-
-	auto NumFiles = zip_get_num_files(archive);
-	Files.reserve(NumFiles);
-
-	for (int i = 0; i < NumFiles; i++)
-	{
-		struct zip_stat stat;
-		zip_stat_index(archive, i, 0, &stat);
-
-		zip_file* File = zip_fopen_index(archive, i, 0);
-		if (File)
-		{
-			std::unique_ptr<ZipFile> ptr = std::make_unique<ZipFile>(stat.name, static_cast<size_t>(stat.size));
-			std::vector<byte> Bytes;
-			Bytes.resize(ptr->Size);
-			zip_int64_t bytes_read = zip_fread(File, Bytes.data(), Bytes.size());
-			HRESULT hr = S_OK;
-			hr = bytes_read == ptr->Size ? S_OK : E_FAIL;
-			if (SUCCEEDED(hr))
-			{
-				hr = ptr->Write(std::move(Bytes));
-			}
-
-			if (SUCCEEDED(hr))
-			{
-				Files.push_back(std::move(ptr));
-				zip_fclose(File);
-			}
-		}
-	}
-	zip_close(archive);
-	return Files;
 }
