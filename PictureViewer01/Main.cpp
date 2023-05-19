@@ -12,8 +12,7 @@
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpszCmdLine, _In_ int nCmdShow)
 {
 	Com cominit(Com::Type::COINIT_APARTMENTTHREADED | Com::Type::COINIT_DISABLE_OLE1DDE);
-	ZipManager zipManager;
-	GraphicsManager graphicManager;
+	
 	std::unique_ptr<Viewer> app;
 	
 	HRESULT hr = S_OK;
@@ -21,7 +20,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	{
 		
 		LOG(L"Initialized COM\n");
-		app = std::make_unique<Viewer>(graphicManager, zipManager);
+		app = std::make_unique<Viewer>();
 		hr = app->Initialize(hInstance);
 
 		
