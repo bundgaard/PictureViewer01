@@ -12,6 +12,7 @@
 #include <algorithm>
 
 #include "ZipManager.h"
+#include "resource.h"
 
 namespace
 {
@@ -39,7 +40,7 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 {
 	WNDCLASSEX wc{};
 	HRESULT hr = S_OK;
-
+	const auto hIcon = static_cast<HICON>(::LoadImageW(hInst, MAKEINTRESOURCEW(IDB_BITMAP1), IMAGE_ICON, 64, 64, LR_DEFAULTCOLOR));
 	if (SUCCEEDED(hr))
 	{
 		wc.cbSize = sizeof(WNDCLASSEX);
@@ -48,7 +49,8 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 		wc.lpszClassName = VIEWER_CLASSNAME;
 		wc.lpfnWndProc = static_cast<WNDPROC>(s_WndProc);
 		wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
-		wc.hIcon = wc.hIconSm = LoadIcon(nullptr, IDI_APPLICATION);
+		wc.hIcon = hIcon;
+		wc.hIconSm = hIcon;
 		wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
 		wc.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
 		wc.hInstance = hInst;
@@ -62,14 +64,14 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 	{
 		LOG(L"Created class\n");
 		const HWND hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW,
-		                                  L"CPICTUREVIEWER01",
-		                                  L"VIEWER",
-		                                  WS_VISIBLE | WS_OVERLAPPEDWINDOW,
-		                                  CW_USEDEFAULT, CW_USEDEFAULT,
-		                                  640, 480,
-		                                  nullptr, nullptr,
-		                                  m_hInst,
-		                                  this);
+			L"CPICTUREVIEWER01",
+			L"VIEWER",
+			WS_VISIBLE | WS_OVERLAPPEDWINDOW,
+			CW_USEDEFAULT, CW_USEDEFAULT,
+			640, 480,
+			nullptr, nullptr,
+			m_hInst,
+			this);
 		mGraphicManager.Initialize(hwnd);
 		hr = hwnd ? S_OK : E_FAIL;
 	}

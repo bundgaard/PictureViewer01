@@ -151,6 +151,7 @@
     <ClInclude Include="Converter.h" />
     <ClInclude Include="GraphicsManager.h" />
     <ClInclude Include="Log.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="SafeRelease.h" />
     <ClInclude Include="String.h" />
     <ClInclude Include="Viewer.h" />
@@ -161,6 +162,13 @@
     <None Include="cpp.hint" />
     <None Include="vcpkg.json" />
     <None Include="ZipExample.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="PictureViewer01.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="ApplicationIcon.ico" />
+    <Image Include="ApplicationIcon.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
