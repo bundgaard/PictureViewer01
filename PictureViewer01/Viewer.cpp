@@ -220,6 +220,7 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 		mGraphicManager->ReleaseConverter();
 		mGraphicManager->ReleaseDeviceResources();
 		ResetTitle();
+		
 	}
 
 
