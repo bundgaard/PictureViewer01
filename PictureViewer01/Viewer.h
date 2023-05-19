@@ -18,7 +18,7 @@ class Viewer final : public BaseWindow<Viewer>
 public:
 	Viewer(Viewer&) = delete;
 
-	explicit Viewer(GraphicsManager& graphicManager, ZipManager& zipManager);
+	explicit Viewer();
 	~Viewer() override;
 
 	HRESULT Initialize(HINSTANCE hInst) override;
@@ -39,8 +39,8 @@ protected:
 	void AppendTitle(std::wstring const& aTitle);
 	void ResetTitle();
 private:
-	GraphicsManager& mGraphicManager;
-	ZipManager& m_ZipManager;
+	std::unique_ptr<GraphicsManager> mGraphicManager;
+	std::unique_ptr<ZipManager>  m_ZipManager;
 
 	float m_lastMouseX{};
 	float m_lastMouseY{};
