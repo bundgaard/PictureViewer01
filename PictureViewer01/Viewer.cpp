@@ -216,11 +216,11 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	{
 		LOG(L"ESCAPE pressed\n");
 		m_imageX = m_imageY = 0;
+
 		m_ZipManager->Clear();
 		mGraphicManager->ReleaseConverter();
 		mGraphicManager->ReleaseDeviceResources();
 		ResetTitle();
-		
 	}
 
 
@@ -294,6 +294,7 @@ HRESULT Viewer::OpenArchive()
 
 
 		m_scaleFactor = 1.0f;
+
 		m_ZipManager->Clear();
 		m_ZipManager->ReadZip(ofn.lpstrFile);
 		AppendTitle(L"");
@@ -390,7 +391,7 @@ void Viewer::AppendTitle(std::wstring const& aTitle)
 	m_OriginalTitle = Caption;
 	Caption.resize(CaptionLength); // reduce \0
 	Caption += L" ";
-	Caption += std::to_wstring(m_ZipManager.Size());
+	Caption += std::to_wstring(m_ZipManager->Size());
 	Caption += L" files loaded";
 	SetWindowTextW(m_hwnd, Caption.c_str());
 	OutputDebugStringW(Caption.c_str());
