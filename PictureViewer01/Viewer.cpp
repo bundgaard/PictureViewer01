@@ -219,6 +219,7 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 		m_ZipManager->Clear();
 		mGraphicManager->ReleaseConverter();
 		mGraphicManager->ReleaseDeviceResources();
+		ResetTitle();
 	}
 
 
@@ -294,6 +295,8 @@ HRESULT Viewer::OpenArchive()
 		m_scaleFactor = 1.0f;
 		m_ZipManager->Clear();
 		m_ZipManager->ReadZip(ofn.lpstrFile);
+		AppendTitle(L"");
+		
 	}
 
 	return hr;
@@ -373,5 +376,29 @@ void Viewer::Start() noexcept
 	{
 		TranslateMessage(&msg);
 		DispatchMessageW(&msg);
+	}
+}
+
+void Viewer::AppendTitle(std::wstring const& aTitle)
+{
+	int CaptionLength = GetWindowTextLengthW(m_hwnd);
+	OutputDebugStringW(std::to_wstring(CaptionLength).c_str());
+	std::wstring Caption;
+	Caption.resize(CaptionLength + 1);
+	GetWindowTextW(m_hwnd, Caption.data(), CaptionLength + 1);
+	m_OriginalTitle = Caption;
+	Caption.resize(CaptionLength); // reduce \0
+	Caption += L" ";
+	Caption += std::to_wstring(m_ZipManager->Size());
+	Caption += L" files loaded";
+	SetWindowTextW(m_hwnd, Caption.c_str());
+	OutputDebugStringW(Caption.c_str());
+}
+
+void Viewer::ResetTitle()
+{
+	if (m_OriginalTitle.size() != 0)
+	{
+		SetWindowTextW(m_hwnd, m_OriginalTitle.c_str());
 	}
 }
