@@ -35,7 +35,9 @@ public:
 	void OnMouseScrollWheel(short delta) noexcept override;
 	void OnChar(wchar_t keyCode, short repeatCount) noexcept override;
 	static void Start() noexcept;
-
+protected:
+	void AppendTitle(std::wstring const& aTitle);
+	void ResetTitle();
 private:
 	std::unique_ptr<GraphicsManager> mGraphicManager;
 	std::unique_ptr<ZipManager>  m_ZipManager;
@@ -45,6 +47,8 @@ private:
 	float m_imageX{};
 	float m_imageY{};
 	float m_scaleFactor = 1.0;
+
+	std::wstring m_OriginalTitle;
 
 };
 
