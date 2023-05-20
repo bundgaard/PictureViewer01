@@ -216,11 +216,11 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	{
 		LOG(L"ESCAPE pressed\n");
 		m_imageX = m_imageY = 0;
+
 		m_ZipManager->Clear();
 		mGraphicManager->ReleaseConverter();
 		mGraphicManager->ReleaseDeviceResources();
 		ResetTitle();
-		
 	}
 
 
@@ -294,6 +294,7 @@ HRESULT Viewer::OpenArchive()
 
 
 		m_scaleFactor = 1.0f;
+
 		m_ZipManager->Clear();
 		m_ZipManager->ReadZip(ofn.lpstrFile);
 		AppendTitle(L"");
