@@ -1,6 +1,5 @@
 #pragma once
 #include "Application.h"
-#include "SafeRelease.h"
 #include "BaseWindow.h"
 
 #include <memory>
@@ -17,14 +16,17 @@ class Viewer final : public BaseWindow<Viewer>
 
 public:
 	Viewer(Viewer&) = delete;
+	Viewer(Viewer&&) = delete;
+	Viewer& operator=(Viewer&&) = delete;
+	Viewer& operator=(Viewer&) = delete;
 
 	explicit Viewer();
 	~Viewer() override;
 
-	HRESULT Initialize(HINSTANCE hInst) override;
-	HRESULT LoadFile(std::wstring const& path) const;
-	HRESULT LoadImage(int delta) const;
-	HRESULT OpenArchive();
+	[[nodiscard]] HRESULT Initialize(HINSTANCE hInst) override;
+	[[nodiscard]] HRESULT LoadFile(std::wstring const& path) const;
+	[[nodiscard]] HRESULT LoadImage() const;
+	[[nodiscard]] HRESULT OpenArchive();
 
 	void OnSize(UINT width, UINT height) noexcept override;
 	LRESULT OnPaint(HWND hwnd) noexcept override;
@@ -36,8 +38,8 @@ public:
 	void OnChar(wchar_t keyCode, short repeatCount) noexcept override;
 	static void Start() noexcept;
 protected:
-	void AppendTitle(std::wstring const& aTitle);
-	void ResetTitle();
+	void UpdateTitle();
+	void ResetTitle() const;
 private:
 	std::unique_ptr<GraphicsManager> mGraphicManager;
 	std::unique_ptr<ZipManager>  m_ZipManager;
@@ -49,6 +51,8 @@ private:
 	float m_scaleFactor = 1.0;
 
 	std::wstring m_OriginalTitle;
+
+	int mCurrentPage;
 
 };
 

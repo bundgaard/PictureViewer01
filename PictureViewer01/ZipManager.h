@@ -15,9 +15,10 @@ public:
 	~ZipManager();
 	void ReadZip(std::wstring const& filename);
 	void Clear();
-	size_t Size() const;
+	[[nodiscard]] size_t Size() const;
 	std::unique_ptr<ZipFile>& Current();
 	void Next();
 	void Previous();
+	[[nodiscard]] int CurrentPage() const;
 };
 

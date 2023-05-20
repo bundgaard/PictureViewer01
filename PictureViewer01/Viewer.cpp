@@ -27,7 +27,7 @@ namespace
 }
 
 
-Viewer::Viewer() : mGraphicManager(std::make_unique<GraphicsManager>()), m_ZipManager(std::make_unique<ZipManager>())
+Viewer::Viewer() : mGraphicManager(std::make_unique<GraphicsManager>()), m_ZipManager(std::make_unique<ZipManager>()), mCurrentPage(0)
 {
 }
 
@@ -41,6 +41,7 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 	WNDCLASSEX wc{};
 	HRESULT hr = S_OK;
 	const auto hIcon = static_cast<HICON>(::LoadImageW(hInst, MAKEINTRESOURCEW(IDB_BITMAP1), IMAGE_ICON, 64, 64, LR_DEFAULTCOLOR));
+	const auto hIconSm = static_cast<HICON>(::LoadImageW(hInst, MAKEINTRESOURCEW(IDB_BITMAP1), IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR));
 	if (SUCCEEDED(hr))
 	{
 		wc.cbSize = sizeof(WNDCLASSEX);
@@ -50,7 +51,7 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 		wc.lpfnWndProc = static_cast<WNDPROC>(s_WndProc);
 		wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
 		wc.hIcon = hIcon;
-		wc.hIconSm = hIcon;
+		wc.hIconSm = hIconSm;
 		wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
 		wc.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
 		wc.hInstance = hInst;
@@ -80,6 +81,8 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 	{
 		LOG(L"Created Window\n");
 	}
+	DestroyIcon(hIcon);
+	DestroyIcon(hIconSm);
 	return hr;
 }
 
@@ -97,7 +100,7 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 		mGraphicManager->RenderTarget()->BeginDraw();
 		mGraphicManager->RenderTarget()->SetTransform(D2D1::IdentityMatrix());
 		mGraphicManager->RenderTarget()->Clear();
-		const auto clientSize = mGraphicManager->RenderTarget()->GetSize();
+		const auto [width, height] = mGraphicManager->RenderTarget()->GetSize();
 		const auto color = mGraphicManager->Brush()->GetColor();
 
 
@@ -109,7 +112,7 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 		if (!mGraphicManager->Bitmap())
 		{
 			mGraphicManager->Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::Crimson));
-			mGraphicManager->RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, clientSize.width, clientSize.height), mGraphicManager->Brush());
+			mGraphicManager->RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, width, height), mGraphicManager->Brush());
 			mGraphicManager->Brush()->SetColor(color);
 
 			mGraphicManager->DrawTextCentered(L"[CTRL] + [o] - To open archive.", 50, D2D1::ColorF::White);
@@ -118,37 +121,37 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 		}
 		if (mGraphicManager->Bitmap())
 		{
-			const auto bitmapSize = mGraphicManager->Bitmap()->GetSize();
+			const auto [bitmapWidth, bitmapHeight] = mGraphicManager->Bitmap()->GetSize();
 
 			constexpr float marginLeft = 50.0f;
 			constexpr float marginRight = 50.0f;
 			constexpr float marginTop = 50.0f;
 			constexpr float marginBottom = 50.0f;
 
-			const auto bitmapRatio = GetRatio(bitmapSize.width, bitmapSize.height);
-			const auto windowRatio = GetRatio(clientSize.width - (marginLeft + marginRight), clientSize.height - (marginTop + marginBottom)); // 100.0f are the imaginary borders, will be moved somewhere
+			const auto bitmapRatio = GetRatio(bitmapWidth, bitmapHeight);
+			const auto windowRatio = GetRatio(width - (marginLeft + marginRight), height - (marginTop + marginBottom)); // 100.0f are the imaginary borders, will be moved somewhere
 
-			float scaledWidth{};
-			float scaledHeight{};
+			float scaledWidth;
+			float scaledHeight;
 
 
 			if (bitmapRatio > windowRatio)
 			{
-				scaledWidth = clientSize.width - (marginLeft + marginRight);
+				scaledWidth = width - (marginLeft + marginRight);
 				scaledHeight = scaledWidth / bitmapRatio;
 			}
 			else
 			{
-				scaledHeight = clientSize.height - (marginTop + marginBottom);
+				scaledHeight = height - (marginTop + marginBottom);
 				scaledWidth = scaledHeight * bitmapRatio;
 			}
 
 
 			const auto clientRect = D2D1::RectF(
-				(((clientSize.width - marginLeft) - scaledWidth) / 2.0f),
-				(((clientSize.height - marginTop) - scaledHeight) / 2.0f),
-				(((clientSize.width + marginRight) + scaledWidth) / 2.0f),
-				(((clientSize.height + marginBottom) + scaledHeight) / 2.0f)
+				(((width - marginLeft) - scaledWidth) / 2.0f),
+				(((height - marginTop) - scaledHeight) / 2.0f),
+				(((width + marginRight) + scaledWidth) / 2.0f),
+				(((height + marginBottom) + scaledHeight) / 2.0f)
 			);
 
 			D2D1_MATRIX_3X2_F transform{};
@@ -158,9 +161,7 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 				D2D1::Matrix3x2F::Scale(
 					m_scaleFactor,
 					m_scaleFactor,
-					D2D1::Point2F(
-						((clientSize.width - 50.0f) - scaledWidth) / 2.0f,
-						((clientSize.height - 50.0f) - scaledHeight) / 2.0f)
+					D2D1::Point2F(width / 2.0f, height / 2.0f)
 				)
 			);
 
@@ -193,8 +194,9 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	if (virtualKey == VK_PRIOR) // PageUp
 	{
 		m_ZipManager->Previous();
-		const HRESULT hr = this->LoadImage(0);
-		if (SUCCEEDED(hr))
+		mCurrentPage = m_ZipManager->CurrentPage();
+		UpdateTitle();
+		if (const HRESULT hr = this->LoadImage(); SUCCEEDED(hr))
 		{
 			LOG(L"Loaded image\n");
 		}
@@ -203,10 +205,10 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 
 	if (virtualKey == VK_NEXT) // Page Down
 	{
-
 		m_ZipManager->Next();
-		const HRESULT hr = LoadImage(0);
-		if (SUCCEEDED(hr))
+		mCurrentPage = m_ZipManager->CurrentPage();
+		UpdateTitle();
+		if (const HRESULT hr = LoadImage(); SUCCEEDED(hr))
 		{
 			LOG(L"Loaded image\n");
 		}
@@ -230,7 +232,7 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 		if (SUCCEEDED(hr))
 		{
 			m_imageX = m_imageY = 0;
-			hr = this->LoadImage(+1);
+			hr = this->LoadImage();
 		}
 
 		if (FAILED(hr))
@@ -247,7 +249,7 @@ HRESULT Viewer::LoadFile(std::wstring const& path) const
 	return mGraphicManager->CreateBitmapFromFile(path);
 }
 
-HRESULT Viewer::LoadImage(int delta) const
+HRESULT Viewer::LoadImage() const
 {
 	HRESULT hr = S_OK;
 	if (SUCCEEDED(hr))
@@ -291,14 +293,10 @@ HRESULT Viewer::OpenArchive()
 	if (SUCCEEDED(hr))
 	{
 		LOG(L"Received %s\n", ofn.lpstrFile);
-
-
 		m_scaleFactor = 1.0f;
-
 		m_ZipManager->Clear();
 		m_ZipManager->ReadZip(ofn.lpstrFile);
-		AppendTitle(L"");
-		
+		UpdateTitle();
 	}
 
 	return hr;
@@ -307,7 +305,7 @@ HRESULT Viewer::OpenArchive()
 void Viewer::OnSize(const UINT width, const UINT height) noexcept
 {
 	LOG(L"Received WM_SIZE %u,%u\n", width, height);
-	mGraphicManager->Resize(width, height);
+	mGraphicManager->Resize(static_cast<int>(width), static_cast<int>(height));
 }
 
 void Viewer::OnMouseMove(const MouseMoveControl ctrl, const float x, const float y) noexcept
@@ -381,25 +379,34 @@ void Viewer::Start() noexcept
 	}
 }
 
-void Viewer::AppendTitle(std::wstring const& aTitle)
+void Viewer::UpdateTitle()
 {
-	int CaptionLength = GetWindowTextLengthW(m_hwnd);
-	OutputDebugStringW(std::to_wstring(CaptionLength).c_str());
-	std::wstring Caption;
-	Caption.resize(CaptionLength + 1);
-	GetWindowTextW(m_hwnd, Caption.data(), CaptionLength + 1);
-	m_OriginalTitle = Caption;
-	Caption.resize(CaptionLength); // reduce \0
-	Caption += L" ";
-	Caption += std::to_wstring(m_ZipManager->Size());
-	Caption += L" files loaded";
-	SetWindowTextW(m_hwnd, Caption.c_str());
-	OutputDebugStringW(Caption.c_str());
+	if (m_OriginalTitle.empty())
+	{
+		const int captionLength = GetWindowTextLengthW(m_hwnd);
+		
+		std::wstring caption;
+		caption.resize(captionLength + 1);
+
+		GetWindowTextW(m_hwnd, caption.data(), captionLength + 1);
+		caption.resize(captionLength);
+		m_OriginalTitle = caption;
+	}
+
+	std::wstringstream title;
+	title << std::to_wstring(mCurrentPage + 1) << "/" << m_ZipManager->Size();
+	std::wstring caption;
+	caption += m_OriginalTitle;
+	caption += L" ";
+	caption += title.str();
+
+	SetWindowText(m_hwnd, caption.c_str());
+
 }
 
-void Viewer::ResetTitle()
+void Viewer::ResetTitle() const
 {
-	if (m_OriginalTitle.size() != 0)
+	if (!m_OriginalTitle.empty())
 	{
 		SetWindowTextW(m_hwnd, m_OriginalTitle.c_str());
 	}
