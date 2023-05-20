@@ -12,7 +12,7 @@
 #include "Log.h"
 namespace
 {
-	inline void RemoveDuplicates(std::vector<std::unique_ptr<ZipFile>>& list)
+	void RemoveDuplicates(std::vector<std::unique_ptr<ZipFile>>& list)
 	{
 		auto compare = [&](const std::unique_ptr<ZipFile>& A, const std::unique_ptr<ZipFile>& B) {
 			return A->Name < B->Name;
@@ -115,4 +115,9 @@ void ZipManager::Previous()
 	{
 		m_currentPage = static_cast<int>(Size()) - 1;
 	}
+}
+
+int ZipManager::CurrentPage() const
+{
+	return m_currentPage;
 }
