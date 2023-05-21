@@ -5,7 +5,6 @@
 #include <memory>
 #include <dwrite.h>
 #include <commdlg.h>
-#include <wil/resource.h>
 
 struct ZipFile;
 class GraphicsManager;
