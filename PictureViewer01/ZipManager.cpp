@@ -39,6 +39,7 @@ ZipManager::~ZipManager()
 
 void ZipManager::ReadZip(std::wstring const& filename)
 {
+	LOG(L"ZipArchive %s", filename.c_str());
 	Clear();
 	zip* archive = zip_open(FromWideString(filename).c_str(), 0, nullptr);
 	if (!archive)

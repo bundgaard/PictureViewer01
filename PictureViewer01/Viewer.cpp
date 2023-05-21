@@ -10,10 +10,12 @@
 #include "GraphicsManager.h"
 #include <strsafe.h>
 #include <algorithm>
+#include <thread>
 
 #include "ZipManager.h"
 #include "resource.h"
 
+#define CM_ZIP_LOADED WM_USER + 0
 namespace
 {
 
@@ -35,13 +37,18 @@ Viewer::~Viewer()
 {
 	LOG(L"Viewer DTOR\n");
 }
+void ThreadWorker(PTP_CALLBACK_INSTANCE, PVOID, PTP_WAIT, TP_WAIT_RESULT)
+{
 
+}
 HRESULT Viewer::Initialize(const HINSTANCE hInst)
 {
 	WNDCLASSEX wc{};
 	HRESULT hr = S_OK;
 	const auto hIcon = static_cast<HICON>(::LoadImageW(hInst, MAKEINTRESOURCEW(IDB_BITMAP1), IMAGE_ICON, 64, 64, LR_DEFAULTCOLOR));
-	const auto hIconSm = static_cast<HICON>(::LoadImageW(hInst, MAKEINTRESOURCEW(IDB_BITMAP1), IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR));
+
+
+
 	if (SUCCEEDED(hr))
 	{
 		wc.cbSize = sizeof(WNDCLASSEX);
@@ -51,7 +58,7 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 		wc.lpfnWndProc = static_cast<WNDPROC>(s_WndProc);
 		wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
 		wc.hIcon = hIcon;
-		wc.hIconSm = hIconSm;
+		wc.hIconSm = hIcon;
 		wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
 		wc.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
 		wc.hInstance = hInst;
@@ -82,7 +89,6 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 		LOG(L"Created Window\n");
 	}
 	DestroyIcon(hIcon);
-	DestroyIcon(hIconSm);
 	return hr;
 }
 
@@ -226,19 +232,9 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	}
 
 
-	if (GetKeyState(VK_CONTROL) & 0x0800 && virtualKey == 0x4f) // o
+	if (GetKeyState(VK_CONTROL) & 0x0800 && virtualKey == 0x4f) // [CTRL] + [o]
 	{
 		HRESULT hr = OpenArchive();
-		if (SUCCEEDED(hr))
-		{
-			m_imageX = m_imageY = 0;
-			hr = this->LoadImage();
-		}
-
-		if (FAILED(hr))
-		{
-			LOG(L"Failed to load picture\n");
-		}
 	}
 	InvalidateRect(m_hwnd, nullptr, true);
 }
@@ -267,7 +263,7 @@ HRESULT Viewer::LoadImage() const
 			hr = mGraphicManager->CreateBitmapFromIStream(item->Stream);
 		}
 	}
-
+	InvalidateRect(m_hwnd, nullptr, false);
 	return hr;
 }
 
@@ -294,9 +290,9 @@ HRESULT Viewer::OpenArchive()
 	{
 		LOG(L"Received %s\n", ofn.lpstrFile);
 		m_scaleFactor = 1.0f;
-		m_ZipManager->Clear();
-		m_ZipManager->ReadZip(ofn.lpstrFile);
-		UpdateTitle();
+		std::wstring Filename = ofn.lpstrFile;
+		std::thread readArchiveThread(Viewer::ArchiveWorker, this, std::move(Filename));
+		readArchiveThread.detach();
 	}
 
 	return hr;
@@ -384,7 +380,7 @@ void Viewer::UpdateTitle()
 	if (m_OriginalTitle.empty())
 	{
 		const int captionLength = GetWindowTextLengthW(m_hwnd);
-		
+
 		std::wstring caption;
 		caption.resize(captionLength + 1);
 
@@ -409,5 +405,22 @@ void Viewer::ResetTitle() const
 	if (!m_OriginalTitle.empty())
 	{
 		SetWindowTextW(m_hwnd, m_OriginalTitle.c_str());
+	}
+}
+
+void Viewer::ArchiveWorker(Viewer* viewer, std::wstring const& Filename)
+{
+	// This could be a problem, for now its detached and it works for my use case.
+	// Could be considered bad practice, but its a background task that will be ready when its ready
+	LOG(L"ArchiveWorker %s\n", Filename.c_str());
+	viewer->m_ZipManager->Clear();
+	viewer->m_ZipManager->ReadZip(Filename);
+	viewer->m_imageX = viewer->m_imageY = 0;
+	HRESULT hr = viewer->LoadImage();
+
+	viewer->UpdateTitle();
+	if (FAILED(hr))
+	{
+		LOG(L"Failed to load picture\n");
 	}
 }

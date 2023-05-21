@@ -3,9 +3,9 @@
 #include "BaseWindow.h"
 
 #include <memory>
-
 #include <dwrite.h>
 #include <commdlg.h>
+#include <wil/resource.h>
 
 struct ZipFile;
 class GraphicsManager;
@@ -40,6 +40,7 @@ public:
 protected:
 	void UpdateTitle();
 	void ResetTitle() const;
+	static void ArchiveWorker(Viewer* viewer, std::wstring const& Filename);
 private:
 	std::unique_ptr<GraphicsManager> mGraphicManager;
 	std::unique_ptr<ZipManager>  m_ZipManager;
@@ -51,7 +52,6 @@ private:
 	float m_scaleFactor = 1.0;
 
 	std::wstring m_OriginalTitle;
-
 	int mCurrentPage;
 
 };
