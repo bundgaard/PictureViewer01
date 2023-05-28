@@ -382,7 +382,7 @@ void Viewer::UpdateTitle()
 		const int captionLength = GetWindowTextLengthW(m_hwnd);
 
 		std::wstring caption;
-		caption.resize(captionLength + 1);
+		caption.resize(static_cast<size_t>(captionLength)+ 1);
 
 		GetWindowTextW(m_hwnd, caption.data(), captionLength + 1);
 		caption.resize(captionLength);
@@ -413,7 +413,6 @@ void Viewer::ArchiveWorker(Viewer* viewer, std::wstring const& Filename)
 	// This could be a problem, for now its detached and it works for my use case.
 	// Could be considered bad practice, but its a background task that will be ready when its ready
 	LOG(L"ArchiveWorker %s\n", Filename.c_str());
-	viewer->m_ZipManager->Clear();
 	viewer->m_ZipManager->ReadZip(Filename);
 	viewer->m_imageX = viewer->m_imageY = 0;
 	HRESULT hr = viewer->LoadImage();

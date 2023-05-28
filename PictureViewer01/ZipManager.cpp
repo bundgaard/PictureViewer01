@@ -39,7 +39,6 @@ ZipManager::~ZipManager()
 
 void ZipManager::ReadZip(std::wstring const& filename)
 {
-	LOG(L"ZipArchive %s", filename.c_str());
 	Clear();
 	zip* archive = zip_open(FromWideString(filename).c_str(), 0, nullptr);
 	if (!archive)
@@ -55,25 +54,29 @@ void ZipManager::ReadZip(std::wstring const& filename)
 	{
 		struct zip_stat stat{};
 		zip_stat_index(archive, i, 0, &stat);
-
-		if (zip_file* File = zip_fopen_index(archive, i, 0))
+		zip_file* File = zip_fopen_index(archive, i, 0);
+		if (!File)
 		{
-			auto ptr = std::make_unique<ZipFile>(stat.name, static_cast<size_t>(stat.size));
-			std::vector<byte> bytes;
-			bytes.resize(ptr->Size);
-			const zip_int64_t bytesRead = zip_fread(File, bytes.data(), bytes.size()); // TODO: could actually have a list and loop through it before hand or just do the work and do it after? I choose the latter.
-			HRESULT hr = S_OK;
-			hr = bytesRead == ptr->Size ? S_OK : E_FAIL;
-			if (SUCCEEDED(hr))
-			{
-				hr = ptr->Write(std::move(bytes));
-			}
+			LOG("zip could not open index\n");
+			continue;
+		}
+		
+		auto ptr = std::make_unique<ZipFile>(stat.name, static_cast<size_t>(stat.size));
+		std::vector<byte> bytes;
+		bytes.resize(ptr->Size);
+		const zip_int64_t bytesRead = zip_fread(File, bytes.data(), bytes.size()); // TODO: could actually have a list and loop through it before hand or just do the work and do it after? I choose the latter.
+		
+		HRESULT hr = S_OK;
+		hr = bytesRead == ptr->Size ? S_OK : E_FAIL;
+		if (SUCCEEDED(hr))
+		{
+			hr = ptr->Write(std::move(bytes));
+		}
 
-			if (SUCCEEDED(hr))
-			{
-				m_zip_files.push_back(std::move(ptr));
-				zip_fclose(File);
-			}
+		if (SUCCEEDED(hr))
+		{
+			m_zip_files.push_back(std::move(ptr));
+			zip_fclose(File);
 		}
 	}
 	zip_close(archive);
