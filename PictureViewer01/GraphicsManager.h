@@ -27,6 +27,8 @@ Now because I am trying to separate out the continous images from the static ima
 I guess a battleplan would be to separate out the Graphic Manager to two classes.
 1 class with factories.
 1 class with device specific things.
+
+GraphicsManager will become factory for Direct2D and its affiliated members.
 */
 class GraphicsManager
 {
@@ -46,6 +48,9 @@ public:
 	GraphicsManager();
 	~GraphicsManager();
 
+	IDWriteFactory* WriteFactory();
+	IWICImagingFactory* WICFactory();
+
 	void Initialize(HWND hwnd); // should be moved
 	void ReleaseConverter(); // should be moved
 	void ReleaseDeviceResources(); // should be moved
@@ -56,23 +61,15 @@ public:
 	HRESULT CreateFormatConverter(); // should be moved
 	HRESULT CreateBitmapFromIStream(IStream* pStream);// should be moved
 	HRESULT CreateBitmapFromFile(std::wstring const& Filepath); // should be moved
-
 	void Resize(int Width, int Height); // should be moved
 	void DrawText(std::wstring const& Text, float x, float y, D2D1::ColorF color = D2D1::ColorF::Black); // should be moved
 	void DrawTextCentered(std::wstring const& Text, float y, D2D1::ColorF color = D2D1::ColorF::Black); // should be moved
-
 	D2D1_WINDOW_STATE CheckWindowState() const; // should be moved
-
 	ID2D1SolidColorBrush* Brush(); // should be moved
-
 	ID2D1HwndRenderTarget* RenderTarget(); // should be moved
 	ID2D1Bitmap* Bitmap(); // should be moved
+	IDWriteTextFormat* TextFormat(); // should be moved
 
-	IDWriteTextFormat* TextFormat();
-
-	IDWriteFactory* WriteFactory();
-
-	IWICImagingFactory* WICFactory();
 	IWICFormatConverter* Converter();
 
 
