@@ -14,6 +14,7 @@
 
 #include "ZipManager.h"
 #include "resource.h"
+#include "AnimatedImage.h"
 
 #define CM_ZIP_LOADED WM_USER + 0
 namespace
@@ -29,18 +30,20 @@ namespace
 }
 
 
-Viewer::Viewer() : mGraphicManager(std::make_unique<GraphicsManager>()), m_ZipManager(std::make_unique<ZipManager>()), mCurrentPage(0)
+Viewer::Viewer() 
+	: mGraphicManager(std::make_unique<GraphicsManager>())
+	, m_ZipManager(std::make_unique<ZipManager>())
+	, mCurrentPage(0)
+	
 {
+	mAnimImage = std::make_unique<AnimatedImage>(m_hwnd, mGraphicManager);
 }
 
 Viewer::~Viewer()
 {
 	LOG(L"Viewer DTOR\n");
 }
-void ThreadWorker(PTP_CALLBACK_INSTANCE, PVOID, PTP_WAIT, TP_WAIT_RESULT)
-{
 
-}
 HRESULT Viewer::Initialize(const HINSTANCE hInst)
 {
 	WNDCLASSEX wc{};
@@ -208,7 +211,7 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 		}
 
 	}
-
+	
 	if (virtualKey == VK_NEXT) // Page Down
 	{
 		m_ZipManager->Next();
@@ -236,6 +239,20 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	{
 		HRESULT hr = OpenArchive();
 	}
+	 if (virtualKey == 0x5a) // z
+	{
+		 
+		 mAnimImage->Load(L"C:\\temp\\9o3d2q4dv02b1.gif");
+	}
+	if (virtualKey == 0x48)  // h
+	{
+
+	}
+	if (virtualKey == 0x4c) // l
+	{
+
+	}
+
 	InvalidateRect(m_hwnd, nullptr, true);
 }
 
@@ -269,8 +286,6 @@ HRESULT Viewer::LoadImage() const
 
 HRESULT Viewer::OpenArchive()
 {
-
-	// openFile dialog with only zip archive.
 	OPENFILENAME ofn{};
 	wchar_t szFile[MAX_PATH] = { 0 };
 

@@ -191,7 +191,12 @@ HRESULT GraphicsManager::CreateBitmapFromIStream(IStream* pStream)
 		WICDecodeMetadataCacheOnDemand,
 		&decoder);
 
-
+	if (SUCCEEDED(hr))
+	{
+		unsigned int frameCount{};
+		hr = decoder->GetFrameCount(&frameCount);
+		LOG(L"Frames %d\n", frameCount);
+	}
 
 	IWICBitmapFrameDecode* frame = nullptr;
 	if (SUCCEEDED(hr))
@@ -209,7 +214,13 @@ HRESULT GraphicsManager::CreateBitmapFromIStream(IStream* pStream)
 	if (SUCCEEDED(hr))
 	{
 		LOG(L"Create format converter\n");
-		hr = Converter()->Initialize(frame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, nullptr, 0.0f, WICBitmapPaletteTypeCustom);
+		hr = Converter()->Initialize(
+			frame, 
+			GUID_WICPixelFormat32bppPBGRA, 
+			WICBitmapDitherTypeNone, 
+			nullptr, 
+			0.0f, 
+			WICBitmapPaletteTypeCustom);
 	}
 
 	if (SUCCEEDED(hr))
@@ -235,7 +246,12 @@ HRESULT GraphicsManager::CreateBitmapFromFile(std::wstring const& Filepath)
 	IWICBitmapDecoder* decoder = nullptr;
 	if (SUCCEEDED(hr))
 	{
-		hr = WICFactory()->CreateDecoderFromFilename(Filepath.c_str(), nullptr, GENERIC_READ, WICDecodeMetadataCacheOnDemand, &decoder);
+		hr = WICFactory()->CreateDecoderFromFilename(
+			Filepath.c_str(), 
+			nullptr, 
+			GENERIC_READ, 
+			WICDecodeMetadataCacheOnDemand, 
+			&decoder);
 	}
 
 	IWICBitmapFrameDecode* frame = nullptr;

@@ -57,7 +57,7 @@ void ZipManager::ReadZip(std::wstring const& filename)
 		zip_file* File = zip_fopen_index(archive, i, 0);
 		if (!File)
 		{
-			LOG("zip could not open index\n");
+			LOG(L"zip could not open index\n");
 			continue;
 		}
 		

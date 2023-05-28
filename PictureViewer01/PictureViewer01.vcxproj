@@ -135,6 +135,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AnimatedImage.cpp" />
     <ClCompile Include="CommonDialog.cpp" />
     <ClCompile Include="GraphicsManager.cpp" />
     <ClCompile Include="Log.cpp" />
@@ -144,6 +145,7 @@
     <ClCompile Include="ZipManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AnimatedImage.h" />
     <ClInclude Include="Application.h" />
     <ClInclude Include="BaseWindow.h" />
     <ClInclude Include="COM.h" />

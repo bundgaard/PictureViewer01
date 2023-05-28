@@ -9,7 +9,7 @@
 struct ZipFile;
 class GraphicsManager;
 class ZipManager;
-
+class AnimatedImage;
 class Viewer final : public BaseWindow<Viewer>
 {
 
@@ -43,7 +43,7 @@ protected:
 private:
 	std::unique_ptr<GraphicsManager> mGraphicManager;
 	std::unique_ptr<ZipManager>  m_ZipManager;
-
+	std::unique_ptr< AnimatedImage> mAnimImage;
 	float m_lastMouseX{};
 	float m_lastMouseY{};
 	float m_imageX{};
