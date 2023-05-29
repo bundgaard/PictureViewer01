@@ -6,13 +6,11 @@
 #include <d2d1.h>
 #include <memory>
 
-struct IWICImagingFactory;
+
 struct IWICFormatConverter;
-struct ID2D1Factory;
 struct ID2D1HwndRenderTarget;
 struct ID2D1Bitmap;
 struct ID2D1SolidColorBrush;
-struct IDWriteFactory;
 struct IDWriteTextFormat;
 /*
 Graphic Manager should become free standing, meaning that things that all need can use GraphicManager and things that are device specific should have another class taking GraphicManager.
