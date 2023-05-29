@@ -3,28 +3,23 @@
 #include <dwrite.h>
 #include <string>
 #include "Log.h"
-
+#include "GraphicFactory.h"
 GraphicsManager::~GraphicsManager()
 {
 	LOG(L"GraphicManager DTOR\n");
 	SafeRelease(m_brush);
 	SafeRelease(m_bitmap);
-	SafeRelease(m_d2_factory);
 	SafeRelease(m_renderTarget);
-
-	SafeRelease(m_wic_factory);
 	SafeRelease(m_wic_converter);
-
 	SafeRelease(m_textFormat);
-	SafeRelease(m_dwrite_factory);
 }
 
-GraphicsManager::GraphicsManager() :m_bitmap(nullptr),
-m_wic_factory(nullptr),
-m_d2_factory(nullptr),
-m_brush(nullptr),
-m_renderTarget(nullptr),
-mHwnd(nullptr)
+GraphicsManager::GraphicsManager(GraphicFactory& factory) 
+	: m_bitmap(nullptr)
+	, mGraphicFactory(factory)
+	, m_brush(nullptr)
+	, m_renderTarget(nullptr)
+	, mHwnd(nullptr)
 {
 
 }
@@ -34,31 +29,10 @@ void GraphicsManager::Initialize(HWND hwnd)
 	mHwnd = hwnd;
 	LOG(L"GraphicManager set HWND\n");
 	HRESULT hr = S_OK;
+	
 	if (SUCCEEDED(hr))
 	{
-		hr = CoCreateInstance(
-			CLSID_WICImagingFactory,
-			nullptr,
-			CLSCTX_INPROC_SERVER,
-			IID_PPV_ARGS(&m_wic_factory)
-		);
-	}
-
-	if (SUCCEEDED(hr))
-	{
-		LOG(L"Created WIC Factory\n");
-		hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_d2_factory);
-	}
-
-	if (SUCCEEDED(hr))
-	{
-		LOG(L"Created D2D1 Factory\n");
-		hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, _uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&m_dwrite_factory));
-	}
-
-	if (SUCCEEDED(hr))
-	{
-		hr = m_dwrite_factory->CreateTextFormat(
+		hr = mGraphicFactory.GetWriteFactory()->CreateTextFormat(
 			L"Comic Sans MS",
 			nullptr,
 			DWRITE_FONT_WEIGHT_NORMAL,
@@ -100,20 +74,10 @@ IWICFormatConverter* GraphicsManager::Converter()
 	return m_wic_converter;
 }
 
-IDWriteFactory* GraphicsManager::WriteFactory()
-{
-	return m_dwrite_factory;
-}
-
-IWICImagingFactory* GraphicsManager::WICFactory()
-{
-	return m_wic_factory;
-}
-
 HRESULT GraphicsManager::CreateFormatConverter()
 {
 	ReleaseConverter();
-	HRESULT hr = m_wic_factory->CreateFormatConverter(&m_wic_converter);
+	HRESULT hr = mGraphicFactory.GetWICFactory()->CreateFormatConverter(&m_wic_converter);
 	return hr;
 }
 
@@ -162,7 +126,7 @@ HRESULT GraphicsManager::CreateDeviceResources(HWND hwnd)
 
 			auto hwndProperties = D2D1::HwndRenderTargetProperties(hwnd, D2D1::SizeU((rc.right - rc.left), (rc.bottom - rc.top)));
 
-			hr = m_d2_factory->CreateHwndRenderTarget(
+			hr = mGraphicFactory.GetD2Factory()->CreateHwndRenderTarget(
 				renderProperties,
 				hwndProperties,
 				&m_renderTarget);
@@ -185,7 +149,7 @@ HRESULT GraphicsManager::CreateBitmapFromIStream(IStream* pStream)
 	ReleaseBitmap();
 	ReleaseConverter();
 
-	hr = WICFactory()->CreateDecoderFromStream(
+	hr = mGraphicFactory.GetWICFactory()->CreateDecoderFromStream(
 		pStream,
 		nullptr,
 		WICDecodeMetadataCacheOnDemand,
@@ -246,7 +210,7 @@ HRESULT GraphicsManager::CreateBitmapFromFile(std::wstring const& Filepath)
 	IWICBitmapDecoder* decoder = nullptr;
 	if (SUCCEEDED(hr))
 	{
-		hr = WICFactory()->CreateDecoderFromFilename(
+		hr = mGraphicFactory.GetWICFactory()->CreateDecoderFromFilename(
 			Filepath.c_str(), 
 			nullptr, 
 			GENERIC_READ, 
@@ -305,7 +269,7 @@ void GraphicsManager::DrawText(std::wstring const& Text, float x, float y, D2D1:
 
 	if (SUCCEEDED(hr))
 	{
-		hr = WriteFactory()->CreateTextLayout(Text.c_str(), static_cast<UINT32>(Text.size()), TextFormat(), Size.width, Size.height, &layout);
+		hr = mGraphicFactory.GetWriteFactory()->CreateTextLayout(Text.c_str(), static_cast<UINT32>(Text.size()), TextFormat(), Size.width, Size.height, &layout);
 	}
 	
 	DWRITE_TEXT_METRICS metric{};
@@ -332,7 +296,7 @@ void GraphicsManager::DrawTextCentered(std::wstring const& Text, float y, D2D1::
 
 	if (SUCCEEDED(hr))
 	{
-		hr = WriteFactory()->CreateTextLayout(Text.c_str(), static_cast<UINT32>(Text.size()), TextFormat(), Size.width, Size.height, &layout);
+		hr = mGraphicFactory.GetWriteFactory()->CreateTextLayout(Text.c_str(), static_cast<UINT32>(Text.size()), TextFormat(), Size.width, Size.height, &layout);
 	}
 
 	DWRITE_TEXT_METRICS metric{};

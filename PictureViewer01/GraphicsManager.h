@@ -4,6 +4,7 @@
 #include "SafeRelease.h"
 #include <string>
 #include <d2d1.h>
+#include <memory>
 
 struct IWICImagingFactory;
 struct IWICFormatConverter;
@@ -30,14 +31,12 @@ I guess a battleplan would be to separate out the Graphic Manager to two classes
 
 GraphicsManager will become factory for Direct2D and its affiliated members.
 */
+class GraphicFactory;
 class GraphicsManager
 {
-	IWICImagingFactory* m_wic_factory = nullptr;
+	GraphicFactory& mGraphicFactory;
+
 	IWICFormatConverter* m_wic_converter = nullptr;
-
-	ID2D1Factory* m_d2_factory = nullptr;
-
-	IDWriteFactory* m_dwrite_factory = nullptr;
 	IDWriteTextFormat* m_textFormat = nullptr;
 
 	ID2D1HwndRenderTarget* m_renderTarget = nullptr; // should be moved
@@ -45,11 +44,8 @@ class GraphicsManager
 	ID2D1SolidColorBrush* m_brush = nullptr; // should be moved
 	HWND mHwnd; // should be moved
 public:
-	GraphicsManager();
+	GraphicsManager(GraphicFactory& factory);
 	~GraphicsManager();
-
-	IDWriteFactory* WriteFactory();
-	IWICImagingFactory* WICFactory();
 
 	void Initialize(HWND hwnd); // should be moved
 	void ReleaseConverter(); // should be moved
@@ -65,11 +61,11 @@ public:
 	void DrawText(std::wstring const& Text, float x, float y, D2D1::ColorF color = D2D1::ColorF::Black); // should be moved
 	void DrawTextCentered(std::wstring const& Text, float y, D2D1::ColorF color = D2D1::ColorF::Black); // should be moved
 	D2D1_WINDOW_STATE CheckWindowState() const; // should be moved
+
 	ID2D1SolidColorBrush* Brush(); // should be moved
 	ID2D1HwndRenderTarget* RenderTarget(); // should be moved
 	ID2D1Bitmap* Bitmap(); // should be moved
 	IDWriteTextFormat* TextFormat(); // should be moved
-
 	IWICFormatConverter* Converter();
 
 

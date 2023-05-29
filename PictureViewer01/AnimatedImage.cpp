@@ -1,4 +1,5 @@
 #include "AnimatedImage.h"
+#include "GraphicFactory.h"
 #include "GraphicsManager.h"
 
 LRESULT AnimatedImage::sWndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -22,7 +23,7 @@ LRESULT AnimatedImage::sWndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 	{
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hwnd, &ps);
-		
+
 		TextOutW(hdc, 0, 0, L"Hello World", 11);
 		EndPaint(hwnd, &ps);
 		return 0;
@@ -38,10 +39,14 @@ LRESULT AnimatedImage::sWndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 	return DefWindowProcW(hwnd, msg, wparam, lparam);
 }
 
-AnimatedImage::AnimatedImage(const HWND Parent, std::unique_ptr<GraphicsManager>& graphicsManager)
-	: mGraphicsManager(graphicsManager)
+AnimatedImage::AnimatedImage(const HWND Parent, GraphicFactory& graphicsFactory)
+	: mGraphicsFactory(graphicsFactory)
+	, mGraphicsManager(std::make_unique<GraphicsManager>(mGraphicsFactory))
 	, mFrameCount(0)
+	, mWnd(nullptr)
 {
+	HRESULT hr = S_OK;
+
 	WNDCLASSEX wc{};
 	wc.cbSize = sizeof(wc);
 	wc.hInstance = GetModuleHandleW(0);
@@ -49,20 +54,29 @@ AnimatedImage::AnimatedImage(const HWND Parent, std::unique_ptr<GraphicsManager>
 	wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
 	wc.lpfnWndProc = (WNDPROC)sWndProc;
 	wc.style = CS_HREDRAW | CS_VREDRAW;
-	RegisterClassEx(&wc);
 
-	mWnd = CreateWindowExW(
-		WS_EX_OVERLAPPEDWINDOW,
-		wc.lpszClassName,
-		L"",
-		WS_OVERLAPPEDWINDOW,
-		0, 0,
-		200, 200,
-		Parent,
-		nullptr,
-		wc.hInstance,
-		this);
+	hr = RegisterClassEx(&wc) ? S_OK : E_FAIL;
 
+	if (SUCCEEDED(hr))
+	{
+		mWnd = CreateWindowExW(
+			WS_EX_OVERLAPPEDWINDOW,
+			wc.lpszClassName,
+			L"",
+			WS_OVERLAPPEDWINDOW,
+			0, 0,
+			200, 200,
+			Parent,
+			nullptr,
+			wc.hInstance,
+			this);
+		hr = mWnd ? S_OK : E_FAIL;
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		mGraphicsManager->Initialize(mWnd);
+	}
 
 }
 
@@ -88,7 +102,7 @@ void AnimatedImage::Load(std::wstring const& filepath)
 
 	if (SUCCEEDED(hr))
 	{
-		hr = mGraphicsManager->WICFactory()->CreateDecoderFromFilename(
+		hr = mGraphicsFactory.GetWICFactory()->CreateDecoderFromFilename(
 			filepath.c_str(),
 			nullptr,
 			GENERIC_READ,
@@ -119,7 +133,7 @@ void AnimatedImage::Load(std::wstring const& filepath)
 	IWICFormatConverter* converter = nullptr;
 	if (SUCCEEDED(hr))
 	{
-		hr = mGraphicsManager->WICFactory()->CreateFormatConverter(&converter);
+		hr = mGraphicsFactory.GetWICFactory()->CreateFormatConverter(&converter);
 	}
 
 	converter->Initialize(

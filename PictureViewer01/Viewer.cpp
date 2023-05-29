@@ -15,11 +15,11 @@
 #include "ZipManager.h"
 #include "resource.h"
 #include "AnimatedImage.h"
+#include "GraphicFactory.h"
 
 #define CM_ZIP_LOADED WM_USER + 0
 namespace
 {
-
 	constexpr wchar_t VIEWER_CLASSNAME[] = L"CPICTUREVIEWER01";
 
 	float GetRatio(const float width, const float height)
@@ -31,12 +31,15 @@ namespace
 
 
 Viewer::Viewer() 
-	: mGraphicManager(std::make_unique<GraphicsManager>())
+	: mGraphicFactory(GraphicFactory())
+	, mGraphicManager(std::make_unique<GraphicsManager>(mGraphicFactory))
 	, m_ZipManager(std::make_unique<ZipManager>())
+	, mAnimImage(std::make_unique<AnimatedImage>(m_hwnd, mGraphicFactory))
 	, mCurrentPage(0)
 	
 {
-	mAnimImage = std::make_unique<AnimatedImage>(m_hwnd, mGraphicManager);
+	
+	
 }
 
 Viewer::~Viewer()

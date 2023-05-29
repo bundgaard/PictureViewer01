@@ -137,6 +137,7 @@
   <ItemGroup>
     <ClCompile Include="AnimatedImage.cpp" />
     <ClCompile Include="CommonDialog.cpp" />
+    <ClCompile Include="GraphicFactory.cpp" />
     <ClCompile Include="GraphicsManager.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -151,6 +152,7 @@
     <ClInclude Include="COM.h" />
     <ClInclude Include="CommonDialog.h" />
     <ClInclude Include="Converter.h" />
+    <ClInclude Include="GraphicFactory.h" />
     <ClInclude Include="GraphicsManager.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="resource.h" />

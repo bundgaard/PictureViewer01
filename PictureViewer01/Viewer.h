@@ -5,6 +5,7 @@
 #include <memory>
 #include <dwrite.h>
 #include <commdlg.h>
+#include "GraphicFactory.h"
 
 struct ZipFile;
 class GraphicsManager;
@@ -41,9 +42,12 @@ protected:
 	void ResetTitle() const;
 	static void ArchiveWorker(Viewer* viewer, std::wstring const& Filename);
 private:
+	GraphicFactory mGraphicFactory;
 	std::unique_ptr<GraphicsManager> mGraphicManager;
 	std::unique_ptr<ZipManager>  m_ZipManager;
-	std::unique_ptr< AnimatedImage> mAnimImage;
+	std::unique_ptr<AnimatedImage> mAnimImage;
+	
+
 	float m_lastMouseX{};
 	float m_lastMouseY{};
 	float m_imageX{};
