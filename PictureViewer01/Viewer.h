@@ -1,16 +1,17 @@
 #pragma once
 #include "Application.h"
+#include "AnimatedImage.h"
 #include "BaseWindow.h"
+
+#include "GraphicFactory.h"
+#include "GraphicsManager.h"
+#include "ZipManager.h"
 
 #include <memory>
 #include <dwrite.h>
 #include <commdlg.h>
-#include "GraphicFactory.h"
 
-struct ZipFile;
-class GraphicsManager;
-class ZipManager;
-class AnimatedImage;
+
 class Viewer final : public BaseWindow<Viewer>
 {
 
@@ -24,8 +25,8 @@ public:
 	~Viewer() override;
 
 	[[nodiscard]] HRESULT Initialize(HINSTANCE hInst) override;
-	[[nodiscard]] HRESULT LoadFile(std::wstring const& path) const;
-	[[nodiscard]] HRESULT LoadImage() const;
+	[[nodiscard]] HRESULT LoadFile(std::wstring const& path);
+	[[nodiscard]] HRESULT LoadImage();
 	[[nodiscard]] HRESULT OpenArchive();
 
 	void OnSize(UINT width, UINT height) noexcept override;
@@ -37,16 +38,17 @@ public:
 	void OnMouseScrollWheel(short delta) noexcept override;
 	void OnChar(wchar_t keyCode, short repeatCount) noexcept override;
 	static void Start() noexcept;
+
 protected:
 	void UpdateTitle();
 	void ResetTitle() const;
 	static void ArchiveWorker(Viewer* viewer, std::wstring const& Filename);
+
 private:
 	GraphicFactory mGraphicFactory;
-	std::unique_ptr<GraphicsManager> mGraphicManager;
-	std::unique_ptr<ZipManager>  m_ZipManager;
-	std::unique_ptr<AnimatedImage> mAnimImage;
-	
+	GraphicsManager mGraphicManager;
+	ZipManager  mZipManager;
+	AnimatedImage mAnimImage;
 
 	float m_lastMouseX{};
 	float m_lastMouseY{};

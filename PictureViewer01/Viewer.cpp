@@ -32,9 +32,9 @@ namespace
 
 Viewer::Viewer() 
 	: mGraphicFactory(GraphicFactory())
-	, mGraphicManager(std::make_unique<GraphicsManager>(mGraphicFactory))
-	, m_ZipManager(std::make_unique<ZipManager>())
-	, mAnimImage(std::make_unique<AnimatedImage>(m_hwnd, mGraphicFactory))
+	, mGraphicManager(GraphicsManager(mGraphicFactory))
+	, mZipManager(ZipManager())
+	, mAnimImage(AnimatedImage(m_hwnd, mGraphicFactory))
 	, mCurrentPage(0)
 	
 {
@@ -86,7 +86,7 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 			nullptr, nullptr,
 			m_hInst,
 			this);
-		mGraphicManager->Initialize(hwnd);
+		mGraphicManager.Initialize(hwnd);
 		hr = hwnd ? S_OK : E_FAIL;
 	}
 
@@ -106,34 +106,34 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 	HRESULT hr = S_OK;
 	PAINTSTRUCT ps{};
 
-	hr = mGraphicManager->CreateDeviceResources(hwnd);
-	if (SUCCEEDED(hr) && !(mGraphicManager->CheckWindowState() & D2D1_WINDOW_STATE_OCCLUDED))
+	hr = mGraphicManager.CreateDeviceResources(hwnd);
+	if (SUCCEEDED(hr) && !(mGraphicManager.CheckWindowState() & D2D1_WINDOW_STATE_OCCLUDED))
 	{
-		mGraphicManager->RenderTarget()->BeginDraw();
-		mGraphicManager->RenderTarget()->SetTransform(D2D1::IdentityMatrix());
-		mGraphicManager->RenderTarget()->Clear();
-		const auto [width, height] = mGraphicManager->RenderTarget()->GetSize();
-		const auto color = mGraphicManager->Brush()->GetColor();
+		mGraphicManager.RenderTarget()->BeginDraw();
+		mGraphicManager.RenderTarget()->SetTransform(D2D1::IdentityMatrix());
+		mGraphicManager.RenderTarget()->Clear();
+		const auto [width, height] = mGraphicManager.RenderTarget()->GetSize();
+		const auto color = mGraphicManager.Brush()->GetColor();
 
 
-		if (mGraphicManager->Converter() && !mGraphicManager->Bitmap())
+		if (mGraphicManager.Converter() && !mGraphicManager.Bitmap())
 		{
-			auto ptr = mGraphicManager->Bitmap();
-			hr = mGraphicManager->RenderTarget()->CreateBitmapFromWicBitmap(mGraphicManager->Converter(), &ptr);
+			auto ptr = mGraphicManager.Bitmap();
+			hr = mGraphicManager.RenderTarget()->CreateBitmapFromWicBitmap(mGraphicManager.Converter(), &ptr);
 		}
-		if (!mGraphicManager->Bitmap())
+		if (!mGraphicManager.Bitmap())
 		{
-			mGraphicManager->Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::Crimson));
-			mGraphicManager->RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, width, height), mGraphicManager->Brush());
-			mGraphicManager->Brush()->SetColor(color);
+			mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::Crimson));
+			mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, width, height), mGraphicManager.Brush());
+			mGraphicManager.Brush()->SetColor(color);
 
-			mGraphicManager->DrawTextCentered(L"[CTRL] + [o] - To open archive.", 50, D2D1::ColorF::White);
-			mGraphicManager->DrawTextCentered(L"[PageUp] and [PageDown] to move back and forth between images in archive.", 100, D2D1::ColorF::White);
-			mGraphicManager->DrawTextCentered(L"[ESC] to unload archive and return back to this menu.", 150, D2D1::ColorF::White);
+			mGraphicManager.DrawTextCentered(L"[CTRL] + [o] - To open archive.", 50, D2D1::ColorF::White);
+			mGraphicManager.DrawTextCentered(L"[PageUp] and [PageDown] to move back and forth between images in archive.", 100, D2D1::ColorF::White);
+			mGraphicManager.DrawTextCentered(L"[ESC] to unload archive and return back to this menu.", 150, D2D1::ColorF::White);
 		}
-		if (mGraphicManager->Bitmap())
+		if (mGraphicManager.Bitmap())
 		{
-			const auto [bitmapWidth, bitmapHeight] = mGraphicManager->Bitmap()->GetSize();
+			const auto [bitmapWidth, bitmapHeight] = mGraphicManager.Bitmap()->GetSize();
 
 			constexpr float marginLeft = 50.0f;
 			constexpr float marginRight = 50.0f;
@@ -168,8 +168,8 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 
 			D2D1_MATRIX_3X2_F transform{};
 
-			mGraphicManager->RenderTarget()->GetTransform(&transform);
-			mGraphicManager->RenderTarget()->SetTransform(
+			mGraphicManager.RenderTarget()->GetTransform(&transform);
+			mGraphicManager.RenderTarget()->SetTransform(
 				D2D1::Matrix3x2F::Scale(
 					m_scaleFactor,
 					m_scaleFactor,
@@ -177,13 +177,13 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 				)
 			);
 
-			mGraphicManager->RenderTarget()->DrawBitmap(mGraphicManager->Bitmap(), clientRect);
+			mGraphicManager.RenderTarget()->DrawBitmap(mGraphicManager.Bitmap(), clientRect);
 			/*mGraphicManager.RenderTarget()->SetTransform(transform);*/
 		}
-		hr = mGraphicManager->RenderTarget()->EndDraw();
+		hr = mGraphicManager.RenderTarget()->EndDraw();
 		if (hr == D2DERR_RECREATE_TARGET)
 		{
-			mGraphicManager->ReleaseDeviceResources();
+			mGraphicManager.ReleaseDeviceResources();
 			hr = InvalidateRect(hwnd, nullptr, true) ? S_OK : E_FAIL;
 		}
 	}
@@ -205,8 +205,8 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 
 	if (virtualKey == VK_PRIOR) // PageUp
 	{
-		m_ZipManager->Previous();
-		mCurrentPage = m_ZipManager->CurrentPage();
+		mZipManager.Previous();
+		mCurrentPage = mZipManager.CurrentPage();
 		UpdateTitle();
 		if (const HRESULT hr = this->LoadImage(); SUCCEEDED(hr))
 		{
@@ -217,8 +217,8 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	
 	if (virtualKey == VK_NEXT) // Page Down
 	{
-		m_ZipManager->Next();
-		mCurrentPage = m_ZipManager->CurrentPage();
+		mZipManager.Next();
+		mCurrentPage = mZipManager.CurrentPage();
 		UpdateTitle();
 		if (const HRESULT hr = LoadImage(); SUCCEEDED(hr))
 		{
@@ -231,9 +231,9 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 		LOG(L"ESCAPE pressed\n");
 		m_imageX = m_imageY = 0;
 
-		m_ZipManager->Clear();
-		mGraphicManager->ReleaseConverter();
-		mGraphicManager->ReleaseDeviceResources();
+		mZipManager.Clear();
+		mGraphicManager.ReleaseConverter();
+		mGraphicManager.ReleaseDeviceResources();
 		ResetTitle();
 	}
 
@@ -245,7 +245,7 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	 if (virtualKey == 0x5a) // z
 	{
 		 
-		 mAnimImage->Load(L"C:\\temp\\9o3d2q4dv02b1.gif");
+		 mAnimImage.Load(L"C:\\temp\\9o3d2q4dv02b1.gif");
 	}
 	if (virtualKey == 0x48)  // h
 	{
@@ -260,27 +260,27 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 }
 
 
-HRESULT Viewer::LoadFile(std::wstring const& path) const
+HRESULT Viewer::LoadFile(std::wstring const& path)
 {
-	return mGraphicManager->CreateBitmapFromFile(path);
+	return mGraphicManager.CreateBitmapFromFile(path);
 }
 
-HRESULT Viewer::LoadImage() const
+HRESULT Viewer::LoadImage()
 {
 	HRESULT hr = S_OK;
 	if (SUCCEEDED(hr))
 	{
-		hr = m_ZipManager->Size() > 0 ? S_OK : E_FAIL;
+		hr = mZipManager.Size() > 0 ? S_OK : E_FAIL;
 	}
 	if (SUCCEEDED(hr))
 	{
-		const std::unique_ptr<ZipFile>& item = m_ZipManager->Current();
+		 std::unique_ptr<ZipFile>& item = mZipManager.Current();
 
 		LOG(L"Create decoder from stream\n");
 		hr = item->RecreateStream();
 		if (SUCCEEDED(hr))
 		{
-			hr = mGraphicManager->CreateBitmapFromIStream(item->Stream);
+			hr = mGraphicManager.CreateBitmapFromIStream(item->Stream);
 		}
 	}
 	InvalidateRect(m_hwnd, nullptr, false);
@@ -319,7 +319,7 @@ HRESULT Viewer::OpenArchive()
 void Viewer::OnSize(const UINT width, const UINT height) noexcept
 {
 	LOG(L"Received WM_SIZE %u,%u\n", width, height);
-	mGraphicManager->Resize(static_cast<int>(width), static_cast<int>(height));
+	mGraphicManager.Resize(static_cast<int>(width), static_cast<int>(height));
 }
 
 void Viewer::OnMouseMove(const MouseMoveControl ctrl, const float x, const float y) noexcept
@@ -408,7 +408,7 @@ void Viewer::UpdateTitle()
 	}
 
 	std::wstringstream title;
-	title << std::to_wstring(mCurrentPage + 1) << "/" << m_ZipManager->Size();
+	title << std::to_wstring(mCurrentPage + 1) << "/" << mZipManager.Size();
 	std::wstring caption;
 	caption += m_OriginalTitle;
 	caption += L" ";
@@ -431,7 +431,7 @@ void Viewer::ArchiveWorker(Viewer* viewer, std::wstring const& Filename)
 	// This could be a problem, for now its detached and it works for my use case.
 	// Could be considered bad practice, but its a background task that will be ready when its ready
 	LOG(L"ArchiveWorker %s\n", Filename.c_str());
-	viewer->m_ZipManager->ReadZip(Filename);
+	viewer->mZipManager.ReadZip(Filename);
 	viewer->m_imageX = viewer->m_imageY = 0;
 	HRESULT hr = viewer->LoadImage();
 
