@@ -24,16 +24,10 @@
     <ClCompile Include="GraphicsManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CommonDialog.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Log.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ZipManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="String.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="AnimatedImage.cpp">
@@ -68,16 +62,10 @@
     <ClInclude Include="GraphicsManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CommonDialog.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Log.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ZipManager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="String.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
