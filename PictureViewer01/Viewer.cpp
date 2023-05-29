@@ -30,16 +30,16 @@ namespace
 }
 
 
-Viewer::Viewer() 
+Viewer::Viewer()
 	: mGraphicFactory(GraphicFactory())
 	, mGraphicManager(GraphicsManager(mGraphicFactory))
 	, mZipManager(ZipManager())
-	, mAnimImage(AnimatedImage(m_hwnd, mGraphicFactory))
+	, mAnimImage(AnimatedImage(mGraphicFactory))
+	, mBossMode(BossMode(mGraphicFactory))
 	, mCurrentPage(0)
-	
 {
-	
-	
+
+
 }
 
 Viewer::~Viewer()
@@ -52,8 +52,6 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 	WNDCLASSEX wc{};
 	HRESULT hr = S_OK;
 	const auto hIcon = static_cast<HICON>(::LoadImageW(hInst, MAKEINTRESOURCEW(IDB_BITMAP1), IMAGE_ICON, 64, 64, LR_DEFAULTCOLOR));
-
-
 
 	if (SUCCEEDED(hr))
 	{
@@ -113,9 +111,8 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 		mGraphicManager.RenderTarget()->SetTransform(D2D1::IdentityMatrix());
 		mGraphicManager.RenderTarget()->Clear();
 		const auto [width, height] = mGraphicManager.RenderTarget()->GetSize();
+
 		const auto color = mGraphicManager.Brush()->GetColor();
-
-
 		if (mGraphicManager.Converter() && !mGraphicManager.Bitmap())
 		{
 			auto ptr = mGraphicManager.Bitmap();
@@ -146,7 +143,6 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 			float scaledWidth;
 			float scaledHeight;
 
-
 			if (bitmapRatio > windowRatio)
 			{
 				scaledWidth = width - (marginLeft + marginRight);
@@ -157,7 +153,6 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 				scaledHeight = height - (marginTop + marginBottom);
 				scaledWidth = scaledHeight * bitmapRatio;
 			}
-
 
 			const auto clientRect = D2D1::RectF(
 				(((width - marginLeft) - scaledWidth) / 2.0f),
@@ -178,8 +173,14 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 			);
 
 			mGraphicManager.RenderTarget()->DrawBitmap(mGraphicManager.Bitmap(), clientRect);
-			/*mGraphicManager.RenderTarget()->SetTransform(transform);*/
+			mGraphicManager.RenderTarget()->SetTransform(transform);
 		}
+
+		if (mBossMode.IsActive())
+		{
+			mBossMode.Render(mGraphicManager.RenderTarget());
+		}
+		
 		hr = mGraphicManager.RenderTarget()->EndDraw();
 		if (hr == D2DERR_RECREATE_TARGET)
 		{
@@ -192,60 +193,69 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 
 void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 {
-#ifdef _DEBUG
+#if defined(DEBUG) ||defined(_DEBUG)
 
 	std::wstringstream out;
 	out << std::hex << virtualKey << L"\n";
 	LOG(out.str().c_str());
 #endif
-	if (virtualKey == VK_SPACE)
+	if (!mBossMode.IsActive())
 	{
-		m_imageX = m_imageY = 0.0f;
-	}
-
-	if (virtualKey == VK_PRIOR) // PageUp
-	{
-		mZipManager.Previous();
-		mCurrentPage = mZipManager.CurrentPage();
-		UpdateTitle();
-		if (const HRESULT hr = this->LoadImage(); SUCCEEDED(hr))
+		if (virtualKey == VK_SPACE)
 		{
-			LOG(L"Loaded image\n");
+			m_imageX = m_imageY = 0.0f;
 		}
 
-	}
-	
-	if (virtualKey == VK_NEXT) // Page Down
-	{
-		mZipManager.Next();
-		mCurrentPage = mZipManager.CurrentPage();
-		UpdateTitle();
-		if (const HRESULT hr = LoadImage(); SUCCEEDED(hr))
+		if (virtualKey == VK_PRIOR) // PageUp
 		{
-			LOG(L"Loaded image\n");
+			mZipManager.Previous();
+			mCurrentPage = mZipManager.CurrentPage();
+			UpdateTitle();
+			if (const HRESULT hr = this->LoadImage(); SUCCEEDED(hr))
+			{
+				LOG(L"Loaded image\n");
+			}
+		}
+
+		if (virtualKey == VK_NEXT) // Page Down
+		{
+			mZipManager.Next();
+			mCurrentPage = mZipManager.CurrentPage();
+			UpdateTitle();
+			if (const HRESULT hr = LoadImage(); SUCCEEDED(hr))
+			{
+				LOG(L"Loaded image\n");
+			}
+		}
+
+		if (virtualKey == VK_ESCAPE)
+		{
+			LOG(L"ESCAPE pressed\n");
+			m_imageX = m_imageY = 0;
+
+			mZipManager.Clear();
+			mGraphicManager.ReleaseConverter();
+			mGraphicManager.ReleaseDeviceResources();
+			ResetTitle();
+		}
+
+
+		if (GetKeyState(VK_CONTROL) & 0x0800 && virtualKey == 0x4f) // [CTRL] + [o]
+		{
+			HRESULT hr = OpenArchive();
 		}
 	}
 
-	if (virtualKey == VK_ESCAPE)
+	if (virtualKey == 0x5a) // z
 	{
-		LOG(L"ESCAPE pressed\n");
-		m_imageX = m_imageY = 0;
-
-		mZipManager.Clear();
-		mGraphicManager.ReleaseConverter();
-		mGraphicManager.ReleaseDeviceResources();
-		ResetTitle();
-	}
-
-
-	if (GetKeyState(VK_CONTROL) & 0x0800 && virtualKey == 0x4f) // [CTRL] + [o]
-	{
-		HRESULT hr = OpenArchive();
-	}
-	 if (virtualKey == 0x5a) // z
-	{
-		 
-		 mAnimImage.Load(L"C:\\temp\\9o3d2q4dv02b1.gif");
+		try
+		{
+			mAnimImage.Load(L"C:\\temp\\9o3d2q4dv02b1.gif");
+		}
+		catch (std::runtime_error& exc)
+		{
+			MessageBox(m_hwnd, ToWideString(exc.what()).c_str(), L"Exception", MB_OK | MB_ICONEXCLAMATION);
+		}
 	}
 	if (virtualKey == 0x48)  // h
 	{
@@ -254,6 +264,11 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	if (virtualKey == 0x4c) // l
 	{
 
+	}
+
+	if (virtualKey == 0x42) // b
+	{
+		mBossMode.SetActive(!mBossMode.IsActive());
 	}
 
 	InvalidateRect(m_hwnd, nullptr, true);
@@ -274,8 +289,7 @@ HRESULT Viewer::LoadImage()
 	}
 	if (SUCCEEDED(hr))
 	{
-		 std::unique_ptr<ZipFile>& item = mZipManager.Current();
-
+		std::unique_ptr<ZipFile>& item = mZipManager.Current();
 		LOG(L"Create decoder from stream\n");
 		hr = item->RecreateStream();
 		if (SUCCEEDED(hr))
@@ -291,7 +305,6 @@ HRESULT Viewer::OpenArchive()
 {
 	OPENFILENAME ofn{};
 	wchar_t szFile[MAX_PATH] = { 0 };
-
 	ofn.hwndOwner = m_hwnd;
 	ofn.lStructSize = sizeof(ofn);
 	ofn.hInstance = (HINSTANCE)GetModuleHandleW(0);
@@ -400,7 +413,7 @@ void Viewer::UpdateTitle()
 		const int captionLength = GetWindowTextLengthW(m_hwnd);
 
 		std::wstring caption;
-		caption.resize(static_cast<size_t>(captionLength)+ 1);
+		caption.resize(static_cast<size_t>(captionLength) + 1);
 
 		GetWindowTextW(m_hwnd, caption.data(), captionLength + 1);
 		caption.resize(captionLength);

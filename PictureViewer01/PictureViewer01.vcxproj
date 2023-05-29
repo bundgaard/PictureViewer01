@@ -136,6 +136,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AnimatedImage.cpp" />
+    <ClCompile Include="BossMode.cpp" />
     <ClCompile Include="GraphicFactory.cpp" />
     <ClCompile Include="GraphicsManager.cpp" />
     <ClCompile Include="Log.cpp" />
@@ -147,6 +148,7 @@
     <ClInclude Include="AnimatedImage.h" />
     <ClInclude Include="Application.h" />
     <ClInclude Include="BaseWindow.h" />
+    <ClInclude Include="BossMode.h" />
     <ClInclude Include="COM.h" />
     <ClInclude Include="Converter.h" />
     <ClInclude Include="GraphicFactory.h" />

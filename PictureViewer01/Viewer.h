@@ -6,11 +6,11 @@
 #include "GraphicFactory.h"
 #include "GraphicsManager.h"
 #include "ZipManager.h"
+#include "BossMode.h"
 
 #include <memory>
 #include <dwrite.h>
 #include <commdlg.h>
-
 
 class Viewer final : public BaseWindow<Viewer>
 {
@@ -49,6 +49,7 @@ private:
 	GraphicsManager mGraphicManager;
 	ZipManager  mZipManager;
 	AnimatedImage mAnimImage;
+	BossMode mBossMode;
 
 	float m_lastMouseX{};
 	float m_lastMouseY{};

@@ -1,9 +1,8 @@
 #pragma once
 #include <memory>
-
-struct IWICImagingFactory;
-struct ID2D1Factory;
-struct IDWriteFactory;
+#include <dwrite.h>
+#include <d2d1.h>
+#include <wincodec.h>
 
 class GraphicFactory
 {

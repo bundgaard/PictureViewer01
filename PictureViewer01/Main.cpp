@@ -17,13 +17,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	
 	HRESULT hr = S_OK;
 	if (SUCCEEDED(hr))
-	{
-		
+	{		
 		LOG(L"Initialized COM\n");
 		app = std::make_unique<Viewer>();
-		hr = app->Initialize(hInstance);
-
-		
+		hr = app->Initialize(hInstance);		
 	}
 	if (SUCCEEDED(hr))
 	{
