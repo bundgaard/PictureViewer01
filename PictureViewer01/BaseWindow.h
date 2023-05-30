@@ -38,7 +38,7 @@ public:
 	virtual void OnMouseScrollWheel(short delta) noexcept = 0;
 	virtual void OnKeyDown(UINT32 virtualKey) noexcept = 0;
 	virtual void OnChar(wchar_t keyCode, short repeatCount) noexcept = 0;
-
+	virtual void OnTimer() noexcept = 0;
 
 	[[nodiscard]] virtual LRESULT OnNcCreate(const WPARAM wparam, const LPARAM lparam) noexcept
 	{
@@ -105,6 +105,12 @@ public:
 				static_cast<TCHAR>(wparam),
 				static_cast<short>(LOWORD(lparam))
 			);
+			break;
+		}
+		case WM_TIMER:
+		{
+			OutputDebugStringW(L"WM_TIMER\n");
+			OnTimer();
 			break;
 		}
 

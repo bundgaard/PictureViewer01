@@ -18,14 +18,12 @@
 #include "GraphicFactory.h"
 
 #define CM_ZIP_LOADED WM_USER + 0
+
 namespace
 {
 	constexpr wchar_t VIEWER_CLASSNAME[] = L"CPICTUREVIEWER01";
 
-	float GetRatio(const float width, const float height)
-	{
-		return width / height;
-	}
+	
 
 }
 
@@ -45,6 +43,7 @@ Viewer::Viewer()
 Viewer::~Viewer()
 {
 	LOG(L"Viewer DTOR\n");
+	KillTimer(m_hwnd, 0);
 }
 
 HRESULT Viewer::Initialize(const HINSTANCE hInst)
@@ -118,6 +117,7 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 			auto ptr = mGraphicManager.Bitmap();
 			hr = mGraphicManager.RenderTarget()->CreateBitmapFromWicBitmap(mGraphicManager.Converter(), &ptr);
 		}
+
 		if (!mGraphicManager.Bitmap())
 		{
 			mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::Crimson));
@@ -137,8 +137,8 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 			constexpr float marginTop = 50.0f;
 			constexpr float marginBottom = 50.0f;
 
-			const auto bitmapRatio = GetRatio(bitmapWidth, bitmapHeight);
-			const auto windowRatio = GetRatio(width - (marginLeft + marginRight), height - (marginTop + marginBottom)); // 100.0f are the imaginary borders, will be moved somewhere
+			const auto bitmapRatio = mGraphicFactory.GetRatio(bitmapWidth, bitmapHeight);
+			const auto windowRatio = mGraphicFactory.GetRatio(width - (marginLeft + marginRight), height - (marginTop + marginBottom)); // 100.0f are the imaginary borders, will be moved somewhere
 
 			float scaledWidth;
 			float scaledHeight;
@@ -180,6 +180,11 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 		{
 			mBossMode.Render(mGraphicManager.RenderTarget());
 		}
+		if (mAnimImage.IsLoaded())
+		{
+			mAnimImage.Render(mGraphicManager.RenderTarget());
+		}
+		
 		
 		hr = mGraphicManager.RenderTarget()->EndDraw();
 		if (hr == D2DERR_RECREATE_TARGET)
@@ -235,7 +240,7 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 
 			mZipManager.Clear();
 			mGraphicManager.ReleaseConverter();
-			mGraphicManager.ReleaseDeviceResources();
+			mGraphicManager.ReleaseDeviceResources(); // BUG here when we press ESCAPE
 			ResetTitle();
 		}
 
@@ -250,7 +255,8 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	{
 		try
 		{
-			mAnimImage.Load(L"C:\\temp\\9o3d2q4dv02b1.gif");
+			mAnimImage.Load(L"C:\\temp\\9o3d2q4dv02b1.gif", mGraphicManager.RenderTarget());
+			SetTimer(m_hwnd, 0, 60, nullptr);
 		}
 		catch (std::runtime_error& exc)
 		{
@@ -394,6 +400,12 @@ void Viewer::OnMouseScrollWheel(const short delta) noexcept
 
 void Viewer::OnChar(wchar_t keyCode, short repeatCount) noexcept
 {
+}
+
+void Viewer::OnTimer() noexcept
+{
+	mAnimImage.Update(mGraphicManager.RenderTarget());
+	LOG(L"OnTimer mAnimImage.Update\n");
 }
 
 void Viewer::Start() noexcept
