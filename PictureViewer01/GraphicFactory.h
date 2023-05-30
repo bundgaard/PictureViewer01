@@ -17,5 +17,10 @@ public:
 	ID2D1Factory* GetD2Factory();
 	IDWriteFactory* GetWriteFactory();
 	IWICImagingFactory* GetWICFactory();
+
+	float GetRatio(const float width, const float height)
+	{
+		return width / height;
+	}
 };
 

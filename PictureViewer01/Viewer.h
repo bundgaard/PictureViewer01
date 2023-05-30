@@ -37,6 +37,7 @@ public:
 	void OnLButtonUp(float x, float y) noexcept override;
 	void OnMouseScrollWheel(short delta) noexcept override;
 	void OnChar(wchar_t keyCode, short repeatCount) noexcept override;
+	void OnTimer() noexcept override;
 	static void Start() noexcept;
 
 protected:
