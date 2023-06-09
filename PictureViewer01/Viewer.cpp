@@ -22,9 +22,6 @@
 namespace
 {
 	constexpr wchar_t VIEWER_CLASSNAME[] = L"CPICTUREVIEWER01";
-
-	
-
 }
 
 
@@ -75,8 +72,8 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 	{
 		LOG(L"Created class\n");
 		const HWND hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW,
-			L"CPICTUREVIEWER01",
-			L"VIEWER",
+			CLASSNAME,
+			TITLE,
 			WS_VISIBLE | WS_OVERLAPPEDWINDOW,
 			CW_USEDEFAULT, CW_USEDEFAULT,
 			640, 480,
@@ -176,16 +173,16 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 			mGraphicManager.RenderTarget()->SetTransform(transform);
 		}
 
-		if (mBossMode.IsActive())
-		{
-			mBossMode.Render(mGraphicManager.RenderTarget());
-		}
+	
 		if (mAnimImage.IsLoaded())
 		{
 			mAnimImage.Render(mGraphicManager.RenderTarget());
 		}
-		
-		
+
+		if (mBossMode.IsActive())
+		{
+			mBossMode.Render(mGraphicManager.RenderTarget());
+		}
 		hr = mGraphicManager.RenderTarget()->EndDraw();
 		if (hr == D2DERR_RECREATE_TARGET)
 		{
@@ -237,7 +234,6 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 		{
 			LOG(L"ESCAPE pressed\n");
 			m_imageX = m_imageY = 0;
-
 			mZipManager.Clear();
 			mGraphicManager.ReleaseConverter();
 			mGraphicManager.ReleaseDeviceResources(); // BUG here when we press ESCAPE
@@ -257,6 +253,7 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 		{
 			mAnimImage.Load(L"C:\\temp\\9o3d2q4dv02b1.gif", mGraphicManager.RenderTarget());
 			SetTimer(m_hwnd, 0, 60, nullptr);
+			
 		}
 		catch (std::runtime_error& exc)
 		{
@@ -275,6 +272,8 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	if (virtualKey == 0x42) // b
 	{
 		mBossMode.SetActive(!mBossMode.IsActive());
+		mAnimImage.SetLoaded(!mAnimImage.IsLoaded());
+		KillTimer(m_hwnd, 0);
 	}
 
 	InvalidateRect(m_hwnd, nullptr, true);
@@ -405,7 +404,15 @@ void Viewer::OnChar(wchar_t keyCode, short repeatCount) noexcept
 void Viewer::OnTimer() noexcept
 {
 	mAnimImage.Update(mGraphicManager.RenderTarget());
-	LOG(L"OnTimer mAnimImage.Update\n");
+}
+
+void Viewer::OnDpiChanged(int x, int y, RECT rct) noexcept
+{
+	// SetWindowPos(m_hwnd, nullptr, )
+	std::wstringstream out;
+	out << L"OnDpiChanged " << x << L"," << y << "\n";
+	OutputDebugStringW(out.str().c_str());
+
 }
 
 void Viewer::Start() noexcept
@@ -420,35 +427,19 @@ void Viewer::Start() noexcept
 
 void Viewer::UpdateTitle()
 {
-	if (m_OriginalTitle.empty())
-	{
-		const int captionLength = GetWindowTextLengthW(m_hwnd);
+	std::wstring title = TITLE;
+	title += L" ";
+	title += std::to_wstring(mCurrentPage + 1);
+	title += L"/";
+	title += std::to_wstring(mZipManager.Size());
 
-		std::wstring caption;
-		caption.resize(static_cast<size_t>(captionLength) + 1);
-
-		GetWindowTextW(m_hwnd, caption.data(), captionLength + 1);
-		caption.resize(captionLength);
-		m_OriginalTitle = caption;
-	}
-
-	std::wstringstream title;
-	title << std::to_wstring(mCurrentPage + 1) << "/" << mZipManager.Size();
-	std::wstring caption;
-	caption += m_OriginalTitle;
-	caption += L" ";
-	caption += title.str();
-
-	SetWindowText(m_hwnd, caption.c_str());
+	SetWindowText(m_hwnd, title.c_str());
 
 }
 
 void Viewer::ResetTitle() const
 {
-	if (!m_OriginalTitle.empty())
-	{
-		SetWindowTextW(m_hwnd, m_OriginalTitle.c_str());
-	}
+	SetWindowTextW(m_hwnd, TITLE);
 }
 
 void Viewer::ArchiveWorker(Viewer* viewer, std::wstring const& Filename)
