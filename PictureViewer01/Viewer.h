@@ -11,6 +11,8 @@
 #include <memory>
 #include <dwrite.h>
 #include <commdlg.h>
+constexpr wchar_t CLASSNAME[] = L"CPICTUREVIEWER01";
+constexpr wchar_t TITLE[] = L"VIEWER";
 
 class Viewer final : public BaseWindow<Viewer>
 {
@@ -38,6 +40,7 @@ public:
 	void OnMouseScrollWheel(short delta) noexcept override;
 	void OnChar(wchar_t keyCode, short repeatCount) noexcept override;
 	void OnTimer() noexcept override;
+	void OnDpiChanged(int x, int y, RECT rct) noexcept override;
 	static void Start() noexcept;
 
 protected:
@@ -58,7 +61,6 @@ private:
 	float m_imageY{};
 	float m_scaleFactor = 1.0;
 
-	std::wstring m_OriginalTitle;
 	int mCurrentPage;
 
 };

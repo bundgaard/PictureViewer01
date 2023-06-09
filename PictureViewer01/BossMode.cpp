@@ -49,7 +49,14 @@ void BossMode::Render(ID2D1HwndRenderTarget* renderTarget) noexcept
 	{
 		renderTarget->FillRectangle(D2D1::RectF(0.0f, 0.0f, width, height), brush);
 		IDWriteTextLayout* layout = nullptr;
-		hr = mGraphicsFactory.GetWriteFactory()->CreateTextLayout(text.c_str(), text.size(), mTextFormat, width, height, &layout);
+		hr = mGraphicsFactory.GetWriteFactory()->CreateTextLayout(
+			text.c_str(),
+			static_cast<UINT32>(text.size()),
+			mTextFormat,
+			width,
+			height,
+			&layout
+		);
 		if (SUCCEEDED(hr))
 		{
 			brush->SetColor(D2D1::ColorF(D2D1::ColorF::Yellow));

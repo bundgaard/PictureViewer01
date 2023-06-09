@@ -138,6 +138,12 @@ bool AnimatedImage::IsLoaded()
 	return mLoaded;
 }
 
+void AnimatedImage::SetLoaded(bool aValue)
+{
+	if (aValue != mLoaded)
+		mLoaded = aValue;
+}
+
 void AnimatedImage::Render(ID2D1HwndRenderTarget* renderTarget)
 {
 	HRESULT hr = S_OK;
