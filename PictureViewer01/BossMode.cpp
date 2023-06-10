@@ -19,7 +19,8 @@ void BossMode::DrawCenteredText(std::wstring const& aText)
 BossMode::BossMode(GraphicFactory& graphicsFactory) : mGraphicsFactory(graphicsFactory), mIsActive(false), mTextFormat(nullptr)
 {
 	mGraphicsFactory.GetWriteFactory()->CreateTextFormat(
-		L"yoster island", //L"Fredericka The Great",
+		//L"yoster island", 
+		L"Fredericka The Great",
 		nullptr,
 		DWRITE_FONT_WEIGHT_NORMAL,
 		DWRITE_FONT_STYLE_NORMAL,
