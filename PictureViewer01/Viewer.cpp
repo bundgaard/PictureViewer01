@@ -234,6 +234,7 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 		{
 			LOG(L"ESCAPE pressed\n");
 			m_imageX = m_imageY = 0;
+
 			mZipManager.Clear();
 			mGraphicManager.ReleaseConverter();
 			mGraphicManager.ReleaseDeviceResources(); // BUG here when we press ESCAPE
@@ -251,7 +252,7 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	{
 		try
 		{
-			mAnimImage.Load(L"C:\\temp\\9o3d2q4dv02b1.gif", mGraphicManager.RenderTarget());
+			mAnimImage.Load(L"C:\\temp\\vbpam0a7plza1.gif", mGraphicManager.RenderTarget());
 			SetTimer(m_hwnd, 0, 60, nullptr);
 			
 		}
@@ -272,7 +273,7 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	if (virtualKey == 0x42) // b
 	{
 		mBossMode.SetActive(!mBossMode.IsActive());
-		mAnimImage.SetLoaded(!mAnimImage.IsLoaded());
+		mAnimImage.SetLoaded(false);
 		KillTimer(m_hwnd, 0);
 	}
 
