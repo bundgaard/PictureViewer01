@@ -4,6 +4,7 @@
 
 namespace
 {
+	constexpr wchar_t NEWLINE[] = L"\r\n";
 	std::wstring logo = L"Microsoft Windows";
 
 	std::wstring text = L"An error has occurred. To continue:\n"
@@ -18,15 +19,33 @@ void BossMode::DrawCenteredText(std::wstring const& aText)
 
 BossMode::BossMode(GraphicFactory& graphicsFactory) : mGraphicsFactory(graphicsFactory), mIsActive(false), mTextFormat(nullptr)
 {
-	mGraphicsFactory.GetWriteFactory()->CreateTextFormat(
-		L"yoster island", //L"Fredericka The Great",
-		nullptr,
-		DWRITE_FONT_WEIGHT_NORMAL,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		20.0f,
-		L"",
-		&mTextFormat);
+	HRESULT hr = S_OK;
+	
+	if (SUCCEEDED(hr))
+	{
+		hr = mGraphicsFactory.GetWriteFactory()->CreateTextFormat(
+			L"yoster island", //L"Fredericka The Great",
+			nullptr,
+			DWRITE_FONT_WEIGHT_NORMAL,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			20.0f,
+			L"",
+			&mTextFormat);
+	}
+	if (FAILED(hr))
+	{
+		hr = mGraphicsFactory.GetWriteFactory()->CreateTextFormat(
+			L"arial",
+			nullptr,
+			DWRITE_FONT_WEIGHT_NORMAL,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			20.0f,
+			L"",
+			&mTextFormat
+		);
+	}
 }
 
 BossMode::~BossMode()

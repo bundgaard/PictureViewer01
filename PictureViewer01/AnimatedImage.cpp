@@ -30,7 +30,7 @@ void AnimatedImage::Load(std::wstring const& filepath, ID2D1HwndRenderTarget* re
 	HRESULT hr = S_OK;
 
 	IWICBitmapDecoder* decoder = nullptr;
-	IWICFormatConverter* formatConverter = nullptr;
+
 	if (SUCCEEDED(hr))
 	{
 		hr = mGraphicsFactory.GetWICFactory()->CreateDecoderFromFilename(
@@ -52,50 +52,53 @@ void AnimatedImage::Load(std::wstring const& filepath, ID2D1HwndRenderTarget* re
 	}
 	LOG(L"Framecount %u\n", mFrameCount);
 
-
+	IWICFormatConverter* formatConverter = nullptr;
 	if (SUCCEEDED(hr))
 	{
 		HRESULT hr = S_OK;
-
 		
+
 		if (SUCCEEDED(hr))
 		{
 			for (unsigned i = 0; i < mFrameCount; i++)
 			{
-				if (SUCCEEDED(hr))
-				{
-					hr = mGraphicsFactory.GetWICFactory()->CreateFormatConverter(&formatConverter); // TODO: maybe a separate everytime or reuse?
-				}
-				IWICBitmapFrameDecode* frame = nullptr;
-				
-				hr = decoder->GetFrame(i, &frame);
 
-				if (SUCCEEDED(hr))
-				{
-					LOG(L"Decoder.GetFrame %u\n", i);
-					// Should initialize the converter and create ID2D1Bitmap's to be saved in the std::vector
-					hr = formatConverter->Initialize(
-						frame,
-						GUID_WICPixelFormat32bppPBGRA,
-						WICBitmapDitherTypeNone,
-						nullptr,
-						0.0f,
-						WICBitmapPaletteTypeCustom
-					);
-				}
-				// Create the converter to a ID2D1Bitmap
+				IWICBitmapFrameDecode* frame = nullptr;
 				ID2D1Bitmap* bitmap = nullptr;
 				if (SUCCEEDED(hr))
 				{
-					LOG(L"FormatConverter initialized %u\n", i);
-					hr = renderTarget->CreateBitmapFromWicBitmap(formatConverter, &bitmap);
+					hr = decoder->GetFrame(i, &frame);
 				}
-
 				if (SUCCEEDED(hr))
 				{
-					LOG(L"Created Bitmap from WICBitmap %u\n", i);
-					mFrames.emplace_back(std::move(bitmap));
+					hr = mGraphicsFactory.GetWICFactory()->CreateFormatConverter(&formatConverter); // TODO: maybe a separate everytime or reuse?
+					if (SUCCEEDED(hr))
+					{
+						LOG(L"Decoder.GetFrame %u\n", i);
+						// Should initialize the converter and create ID2D1Bitmap's to be saved in the std::vector
+						hr = formatConverter->Initialize(
+							frame,
+							GUID_WICPixelFormat32bppPBGRA,
+							WICBitmapDitherTypeNone,
+							nullptr,
+							0.0f,
+							WICBitmapPaletteTypeCustom
+						);
+					}
+					if (SUCCEEDED(hr))
+					{
+						LOG(L"FormatConverter initialized %u\n", i);
+						hr = renderTarget->CreateBitmapFromWicBitmap(formatConverter, &bitmap);
+					}
+
+					if (SUCCEEDED(hr))
+					{
+						LOG(L"Created Bitmap from WICBitmap %u\n", i);
+						mFrames.emplace_back(std::move(bitmap));
+					}
+
 				}
+
 				if (FAILED(hr))
 				{
 					LOG(L"Failed to go through all frames\n");
@@ -153,7 +156,7 @@ void AnimatedImage::Render(ID2D1HwndRenderTarget* renderTarget)
 
 	if (SUCCEEDED(hr))
 	{
-		
+
 
 		// SCALE AND TRANSFORM
 		const auto [bitmapWidth, bitmapHeight] = mCurrentFrame->GetSize();
@@ -197,10 +200,16 @@ void AnimatedImage::Render(ID2D1HwndRenderTarget* renderTarget)
 				D2D1::Point2F(width / 2.0f, height / 2.0f)
 			)
 		);
-
+		ID2D1SolidColorBrush* brush = nullptr;
+		renderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
+		renderTarget->FillRectangle(clientRect, brush);
 		renderTarget->DrawBitmap(mCurrentFrame, clientRect);
 		renderTarget->SetTransform(transform);
-
+		if (brush)
+		{
+			brush->Release();
+			brush = nullptr;
+		}
 		///
 	}
 
@@ -211,6 +220,6 @@ void AnimatedImage::Update(ID2D1HwndRenderTarget* renderTarget)
 {
 	mCurrentFrame = mFrames.at(mCurrentFrameIdx++ % mFrameCount);
 	InvalidateRect(renderTarget->GetHwnd(), nullptr, TRUE);
-	
+
 	// This should be called in a timer from the Viewer class
 }
