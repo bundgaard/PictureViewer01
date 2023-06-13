@@ -62,6 +62,6 @@ private:
 	float m_scaleFactor = 1.0;
 
 	int mCurrentPage;
-
+	UINT mDpi;
 };
 

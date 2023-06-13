@@ -131,7 +131,6 @@ public:
 		}
 		case WM_TIMER:
 		{
-			OutputDebugStringW(L"WM_TIMER\n");
 			OnTimer();
 			break;
 		}

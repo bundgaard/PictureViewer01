@@ -41,11 +41,12 @@ class GraphicsManager
 	ID2D1Bitmap* m_bitmap = nullptr; // should be moved
 	ID2D1SolidColorBrush* m_brush = nullptr; // should be moved
 	HWND mHwnd; // should be moved
+	UINT mDpi;
 public:
 	GraphicsManager(GraphicFactory& factory);
 	~GraphicsManager();
 
-	void Initialize(HWND hwnd); // should be moved
+	void Initialize(HWND hwnd, UINT dpi); // should be moved
 	void ReleaseConverter(); // should be moved
 	void ReleaseDeviceResources(); // should be moved
 	void ReleaseBitmap();// should be moved
