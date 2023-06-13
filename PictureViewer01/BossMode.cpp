@@ -59,6 +59,10 @@ BossMode::~BossMode()
 
 void BossMode::Render(ID2D1HwndRenderTarget* renderTarget) noexcept
 {
+	if (!mIsActive)
+	{
+		return;
+	}
 	const auto [width, height] = renderTarget->GetSize();
 	ID2D1SolidColorBrush* brush = nullptr;
 	UINT32 BlueDeathScreenColor = (8 << 16) | (39 << 8) | (249);

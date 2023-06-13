@@ -149,6 +149,10 @@ void AnimatedImage::SetLoaded(bool aValue)
 
 void AnimatedImage::Render(ID2D1HwndRenderTarget* renderTarget)
 {
+	if (!mLoaded)
+	{
+		return;
+	}
 	HRESULT hr = S_OK;
 
 
@@ -202,8 +206,12 @@ void AnimatedImage::Render(ID2D1HwndRenderTarget* renderTarget)
 				)
 			);
 			ID2D1SolidColorBrush* brush = nullptr;
-			renderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
-			renderTarget->FillRectangle(clientRect, brush);
+			hr = renderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
+			if (SUCCEEDED(hr))
+			{
+				renderTarget->FillRectangle(clientRect, brush);
+			}
+			
 			renderTarget->DrawBitmap(mCurrentFrame, clientRect);
 			renderTarget->SetTransform(transform);
 			if (brush)
