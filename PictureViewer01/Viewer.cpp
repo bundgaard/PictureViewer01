@@ -72,7 +72,8 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 	if (SUCCEEDED(hr))
 	{
 		LOG(L"Created class\n");
-		const HWND hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW,
+		const HWND hwnd = CreateWindowExW(
+			WS_EX_OVERLAPPEDWINDOW,
 			CLASSNAME,
 			TITLE,
 			WS_VISIBLE | WS_OVERLAPPEDWINDOW,
@@ -80,7 +81,8 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 			640, 480,
 			nullptr, nullptr,
 			m_hInst,
-			this);
+			this
+		);
 		mDpi = GetDpiForWindow(hwnd);
 		SetWindowPos(
 			hwnd,
@@ -88,7 +90,8 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 			0, 0,
 			640 * static_cast<float>(mDpi) / 96.0f,
 			480 * static_cast<float>(mDpi) / 96.0f,
-			SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOZORDER);
+			SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOZORDER
+		);
 		mGraphicManager.Initialize(hwnd, mDpi);
 		hr = hwnd ? S_OK : E_FAIL;
 	}
@@ -418,6 +421,14 @@ void Viewer::OnDpiChanged(int x, int y, RECT rct) noexcept
 	std::wstringstream out;
 	out << L"OnDpiChanged " << x << L"," << y << "\n";
 	OutputDebugStringW(out.str().c_str());
+
+	SetWindowPos(
+		m_hwnd, nullptr, 
+		rct.left, rct.top, 
+		rct.right - rct.left, 
+		rct.bottom - rct.top, 
+		SWP_NOZORDER | SWP_NOACTIVATE
+	);
 
 }
 
