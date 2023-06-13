@@ -56,7 +56,7 @@ void AnimatedImage::Load(std::wstring const& filepath, ID2D1HwndRenderTarget* re
 	if (SUCCEEDED(hr))
 	{
 		HRESULT hr = S_OK;
-		
+
 
 		if (SUCCEEDED(hr))
 		{
@@ -157,60 +157,62 @@ void AnimatedImage::Render(ID2D1HwndRenderTarget* renderTarget)
 	if (SUCCEEDED(hr))
 	{
 
-
-		// SCALE AND TRANSFORM
-		const auto [bitmapWidth, bitmapHeight] = mCurrentFrame->GetSize();
-
-		constexpr float marginLeft = 50.0f;
-		constexpr float marginRight = 50.0f;
-		constexpr float marginTop = 50.0f;
-		constexpr float marginBottom = 50.0f;
-
-		const auto bitmapRatio = mGraphicsFactory.GetRatio(bitmapWidth, bitmapHeight);
-		const auto windowRatio = mGraphicsFactory.GetRatio(width - (marginLeft + marginRight), height - (marginTop + marginBottom)); // 100.0f are the imaginary borders, will be moved somewhere
-
-		float scaledWidth;
-		float scaledHeight;
-
-		if (bitmapRatio > windowRatio)
+		if (mCurrentFrame != nullptr)
 		{
-			scaledWidth = width - (marginLeft + marginRight);
-			scaledHeight = scaledWidth / bitmapRatio;
-		}
-		else
-		{
-			scaledHeight = height - (marginTop + marginBottom);
-			scaledWidth = scaledHeight * bitmapRatio;
-		}
+			// SCALE AND TRANSFORM
+			const auto [bitmapWidth, bitmapHeight] = mCurrentFrame->GetSize();
 
-		const auto clientRect = D2D1::RectF(
-			(((width - marginLeft) - scaledWidth) / 2.0f),
-			(((height - marginTop) - scaledHeight) / 2.0f),
-			(((width + marginRight) + scaledWidth) / 2.0f),
-			(((height + marginBottom) + scaledHeight) / 2.0f)
-		);
+			constexpr float marginLeft = 50.0f;
+			constexpr float marginRight = 50.0f;
+			constexpr float marginTop = 50.0f;
+			constexpr float marginBottom = 50.0f;
 
-		D2D1_MATRIX_3X2_F transform{};
+			const auto bitmapRatio = mGraphicsFactory.GetRatio(bitmapWidth, bitmapHeight);
+			const auto windowRatio = mGraphicsFactory.GetRatio(width - (marginLeft + marginRight), height - (marginTop + marginBottom)); // 100.0f are the imaginary borders, will be moved somewhere
 
-		renderTarget->GetTransform(&transform);
-		renderTarget->SetTransform(
-			D2D1::Matrix3x2F::Scale(
-				1.0,
-				1.0,
-				D2D1::Point2F(width / 2.0f, height / 2.0f)
-			)
-		);
-		ID2D1SolidColorBrush* brush = nullptr;
-		renderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
-		renderTarget->FillRectangle(clientRect, brush);
-		renderTarget->DrawBitmap(mCurrentFrame, clientRect);
-		renderTarget->SetTransform(transform);
-		if (brush)
-		{
-			brush->Release();
-			brush = nullptr;
+			float scaledWidth;
+			float scaledHeight;
+
+			if (bitmapRatio > windowRatio)
+			{
+				scaledWidth = width - (marginLeft + marginRight);
+				scaledHeight = scaledWidth / bitmapRatio;
+			}
+			else
+			{
+				scaledHeight = height - (marginTop + marginBottom);
+				scaledWidth = scaledHeight * bitmapRatio;
+			}
+
+			const auto clientRect = D2D1::RectF(
+				(((width - marginLeft) - scaledWidth) / 2.0f),
+				(((height - marginTop) - scaledHeight) / 2.0f),
+				(((width + marginRight) + scaledWidth) / 2.0f),
+				(((height + marginBottom) + scaledHeight) / 2.0f)
+			);
+
+			D2D1_MATRIX_3X2_F transform{};
+
+			renderTarget->GetTransform(&transform);
+			renderTarget->SetTransform(
+				D2D1::Matrix3x2F::Scale(
+					1.0,
+					1.0,
+					D2D1::Point2F(width / 2.0f, height / 2.0f)
+				)
+			);
+			ID2D1SolidColorBrush* brush = nullptr;
+			renderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
+			renderTarget->FillRectangle(clientRect, brush);
+			renderTarget->DrawBitmap(mCurrentFrame, clientRect);
+			renderTarget->SetTransform(transform);
+			if (brush)
+			{
+				brush->Release();
+				brush = nullptr;
+			}
+			///
 		}
-		///
 	}
 
 	// here we should draw a picture and then draw it to our HwndRenderTarget
