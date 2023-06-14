@@ -1,32 +1,27 @@
 
-#include "Viewer.h"
-#include <windowsx.h>
-
-#include <sstream>
-
-#include "BaseWindow.h"
-#include "ZipFile.h"
-#include "Converter.h"
-#include "GraphicsManager.h"
-#include <strsafe.h>
 #include <algorithm>
 #include <thread>
+#include <sstream>
 
+#include "Viewer.h"
 #include "ZipManager.h"
 #include "resource.h"
 #include "AnimatedImage.h"
 #include "GraphicFactory.h"
+#include "ZipFile.h"
+#include "Converter.h"
+#include "GraphicsManager.h"
+
+#include <windowsx.h>
+#include <strsafe.h>
+
+
 
 #define CM_ZIP_LOADED WM_USER + 0
+
 namespace
 {
 	constexpr wchar_t VIEWER_CLASSNAME[] = L"CPICTUREVIEWER01";
-
-	float GetRatio(const float width, const float height)
-	{
-		return width / height;
-	}
-
 }
 
 
@@ -37,6 +32,7 @@ Viewer::Viewer()
 	, mAnimImage(AnimatedImage(mGraphicFactory))
 	, mBossMode(BossMode(mGraphicFactory))
 	, mCurrentPage(0)
+	, mDpi(96)
 {
 
 
@@ -45,6 +41,7 @@ Viewer::Viewer()
 Viewer::~Viewer()
 {
 	LOG(L"Viewer DTOR\n");
+	KillTimer(m_hwnd, 0);
 }
 
 HRESULT Viewer::Initialize(const HINSTANCE hInst)
@@ -75,16 +72,27 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 	if (SUCCEEDED(hr))
 	{
 		LOG(L"Created class\n");
-		const HWND hwnd = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW,
-			L"CPICTUREVIEWER01",
-			L"VIEWER",
+		const HWND hwnd = CreateWindowExW(
+			WS_EX_OVERLAPPEDWINDOW,
+			CLASSNAME,
+			TITLE,
 			WS_VISIBLE | WS_OVERLAPPEDWINDOW,
 			CW_USEDEFAULT, CW_USEDEFAULT,
 			640, 480,
 			nullptr, nullptr,
 			m_hInst,
-			this);
-		mGraphicManager.Initialize(hwnd);
+			this
+		);
+		mDpi = GetDpiForWindow(hwnd);
+		SetWindowPos(
+			hwnd,
+			nullptr,
+			0, 0,
+			640 * static_cast<float>(mDpi) / 96.0f,
+			480 * static_cast<float>(mDpi) / 96.0f,
+			SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOZORDER
+		);
+		mGraphicManager.Initialize(hwnd, mDpi);
 		hr = hwnd ? S_OK : E_FAIL;
 	}
 
@@ -110,6 +118,7 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 		mGraphicManager.RenderTarget()->BeginDraw();
 		mGraphicManager.RenderTarget()->SetTransform(D2D1::IdentityMatrix());
 		mGraphicManager.RenderTarget()->Clear();
+
 		const auto [width, height] = mGraphicManager.RenderTarget()->GetSize();
 
 		const auto color = mGraphicManager.Brush()->GetColor();
@@ -118,18 +127,19 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 			auto ptr = mGraphicManager.Bitmap();
 			hr = mGraphicManager.RenderTarget()->CreateBitmapFromWicBitmap(mGraphicManager.Converter(), &ptr);
 		}
-		if (!mGraphicManager.Bitmap())
-		{
-			mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::Crimson));
-			mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, width, height), mGraphicManager.Brush());
-			mGraphicManager.Brush()->SetColor(color);
 
-			mGraphicManager.DrawTextCentered(L"[CTRL] + [o] - To open archive.", 50, D2D1::ColorF::White);
-			mGraphicManager.DrawTextCentered(L"[PageUp] and [PageDown] to move back and forth between images in archive.", 100, D2D1::ColorF::White);
-			mGraphicManager.DrawTextCentered(L"[ESC] to unload archive and return back to this menu.", 150, D2D1::ColorF::White);
-		}
+
+		mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::Crimson));
+		mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, width, height), mGraphicManager.Brush());
+		mGraphicManager.Brush()->SetColor(color);
+
+		mGraphicManager.DrawTextCentered(L"[CTRL] + [O] - To open archive.", 50, D2D1::ColorF::White);
+		mGraphicManager.DrawTextCentered(L"[PageUp] and [PageDown] to move back and forth between images in archive.", 100, D2D1::ColorF::White);
+		mGraphicManager.DrawTextCentered(L"[ESC] to unload archive and return back to this menu.", 150, D2D1::ColorF::White);
+
 		if (mGraphicManager.Bitmap())
 		{
+			
 			const auto [bitmapWidth, bitmapHeight] = mGraphicManager.Bitmap()->GetSize();
 
 			constexpr float marginLeft = 50.0f;
@@ -137,8 +147,8 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 			constexpr float marginTop = 50.0f;
 			constexpr float marginBottom = 50.0f;
 
-			const auto bitmapRatio = GetRatio(bitmapWidth, bitmapHeight);
-			const auto windowRatio = GetRatio(width - (marginLeft + marginRight), height - (marginTop + marginBottom)); // 100.0f are the imaginary borders, will be moved somewhere
+			const auto bitmapRatio = mGraphicFactory.GetRatio(bitmapWidth, bitmapHeight);
+			const auto windowRatio = mGraphicFactory.GetRatio(width - (marginLeft + marginRight), height - (marginTop + marginBottom)); // 100.0f are the imaginary borders, will be moved somewhere
 
 			float scaledWidth;
 			float scaledHeight;
@@ -154,7 +164,7 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 				scaledWidth = scaledHeight * bitmapRatio;
 			}
 
-			const auto clientRect = D2D1::RectF(
+			const auto bitmapRect = D2D1::RectF(
 				(((width - marginLeft) - scaledWidth) / 2.0f),
 				(((height - marginTop) - scaledHeight) / 2.0f),
 				(((width + marginRight) + scaledWidth) / 2.0f),
@@ -171,16 +181,16 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 					D2D1::Point2F(width / 2.0f, height / 2.0f)
 				)
 			);
-
-			mGraphicManager.RenderTarget()->DrawBitmap(mGraphicManager.Bitmap(), clientRect);
+			mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
+			mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0, 0, width, height), mGraphicManager.Brush());
+			mGraphicManager.Brush()->SetColor(color);
+			mGraphicManager.RenderTarget()->DrawBitmap(mGraphicManager.Bitmap(), bitmapRect);
 			mGraphicManager.RenderTarget()->SetTransform(transform);
 		}
 
-		if (mBossMode.IsActive())
-		{
-			mBossMode.Render(mGraphicManager.RenderTarget());
-		}
-		
+		mAnimImage.Render(mGraphicManager.RenderTarget());
+		mBossMode.Render(mGraphicManager.RenderTarget());
+
 		hr = mGraphicManager.RenderTarget()->EndDraw();
 		if (hr == D2DERR_RECREATE_TARGET)
 		{
@@ -235,7 +245,7 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 
 			mZipManager.Clear();
 			mGraphicManager.ReleaseConverter();
-			mGraphicManager.ReleaseDeviceResources();
+			mGraphicManager.ReleaseDeviceResources(); // BUG here when we press ESCAPE
 			ResetTitle();
 		}
 
@@ -250,7 +260,9 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	{
 		try
 		{
-			mAnimImage.Load(L"C:\\temp\\9o3d2q4dv02b1.gif");
+			mAnimImage.Load(L"C:\\temp\\vbpam0a7plza1.gif", mGraphicManager.RenderTarget());
+			SetTimer(m_hwnd, 0, 60, nullptr);
+
 		}
 		catch (std::runtime_error& exc)
 		{
@@ -269,6 +281,8 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	if (virtualKey == 0x42) // b
 	{
 		mBossMode.SetActive(!mBossMode.IsActive());
+		mAnimImage.SetLoaded(false);
+		KillTimer(m_hwnd, 0);
 	}
 
 	InvalidateRect(m_hwnd, nullptr, true);
@@ -396,6 +410,28 @@ void Viewer::OnChar(wchar_t keyCode, short repeatCount) noexcept
 {
 }
 
+void Viewer::OnTimer() noexcept
+{
+	mAnimImage.Update(mGraphicManager.RenderTarget());
+}
+
+void Viewer::OnDpiChanged(int x, int y, RECT rct) noexcept
+{
+	// SetWindowPos(m_hwnd, nullptr, )
+	std::wstringstream out;
+	out << L"OnDpiChanged " << x << L"," << y << "\n";
+	OutputDebugStringW(out.str().c_str());
+
+	SetWindowPos(
+		m_hwnd, nullptr, 
+		rct.left, rct.top, 
+		rct.right - rct.left, 
+		rct.bottom - rct.top, 
+		SWP_NOZORDER | SWP_NOACTIVATE
+	);
+
+}
+
 void Viewer::Start() noexcept
 {
 	MSG msg{};
@@ -408,35 +444,19 @@ void Viewer::Start() noexcept
 
 void Viewer::UpdateTitle()
 {
-	if (m_OriginalTitle.empty())
-	{
-		const int captionLength = GetWindowTextLengthW(m_hwnd);
+	std::wstring title = TITLE;
+	title += L" ";
+	title += std::to_wstring(mCurrentPage + 1);
+	title += L"/";
+	title += std::to_wstring(mZipManager.Size());
 
-		std::wstring caption;
-		caption.resize(static_cast<size_t>(captionLength) + 1);
-
-		GetWindowTextW(m_hwnd, caption.data(), captionLength + 1);
-		caption.resize(captionLength);
-		m_OriginalTitle = caption;
-	}
-
-	std::wstringstream title;
-	title << std::to_wstring(mCurrentPage + 1) << "/" << mZipManager.Size();
-	std::wstring caption;
-	caption += m_OriginalTitle;
-	caption += L" ";
-	caption += title.str();
-
-	SetWindowText(m_hwnd, caption.c_str());
+	SetWindowText(m_hwnd, title.c_str());
 
 }
 
 void Viewer::ResetTitle() const
 {
-	if (!m_OriginalTitle.empty())
-	{
-		SetWindowTextW(m_hwnd, m_OriginalTitle.c_str());
-	}
+	SetWindowTextW(m_hwnd, TITLE);
 }
 
 void Viewer::ArchiveWorker(Viewer* viewer, std::wstring const& Filename)

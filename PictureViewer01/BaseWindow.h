@@ -38,6 +38,8 @@ public:
 	virtual void OnMouseScrollWheel(short delta) noexcept = 0;
 	virtual void OnKeyDown(UINT32 virtualKey) noexcept = 0;
 	virtual void OnChar(wchar_t keyCode, short repeatCount) noexcept = 0;
+	virtual void OnTimer() noexcept = 0;
+	virtual void OnDpiChanged(int dpiX, int dpiY, RECT rect) noexcept = 0;
 
 
 	[[nodiscard]] virtual LRESULT OnNcCreate(const WPARAM wparam, const LPARAM lparam) noexcept
@@ -50,6 +52,26 @@ public:
 	{
 		switch (msg)
 		{
+		case WM_DPICHANGED:
+		{
+			/*
+			wParam
+			The HIWORD of the wParam contains the Y-axis value of the new dpi of the window. 
+			The LOWORD of the wParam contains the X-axis value of the new DPI of the window. 
+			For example, 96, 120, 144, or 192. 
+			The values of the X-axis and the Y-axis are identical for Windows apps.
+			lParam
+			A pointer to a RECT structure that provides a suggested size and position 
+			of the current window scaled for the new DPI. 
+			The expectation is that apps will reposition and resize windows based on the 
+			suggestions provided by lParam when handling this message.
+			*/
+			auto* SuggestedRect = reinterpret_cast<RECT*>(lparam);
+			auto dpiX = HIWORD(wparam);
+			auto dpiY = LOWORD(wparam);
+			OnDpiChanged(dpiX, dpiY, *SuggestedRect);
+			return 0;
+		}
 		case WM_MOUSEWHEEL:
 		{
 			OnMouseScrollWheel(GET_WHEEL_DELTA_WPARAM(wparam));
@@ -105,6 +127,11 @@ public:
 				static_cast<TCHAR>(wparam),
 				static_cast<short>(LOWORD(lparam))
 			);
+			break;
+		}
+		case WM_TIMER:
+		{
+			OnTimer();
 			break;
 		}
 

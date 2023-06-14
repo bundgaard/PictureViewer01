@@ -14,22 +14,23 @@ GraphicsManager::~GraphicsManager()
 	SafeRelease(m_textFormat);
 }
 
-GraphicsManager::GraphicsManager(GraphicFactory& factory) 
+GraphicsManager::GraphicsManager(GraphicFactory& factory)
 	: m_bitmap(nullptr)
 	, mGraphicFactory(factory)
 	, m_brush(nullptr)
 	, m_renderTarget(nullptr)
 	, mHwnd(nullptr)
+	, mDpi(96)
 {
 
 }
 
-void GraphicsManager::Initialize(HWND hwnd)
+void GraphicsManager::Initialize(HWND hwnd, UINT dpi)
 {
 	mHwnd = hwnd;
 	LOG(L"GraphicManager set HWND\n");
 	HRESULT hr = S_OK;
-	
+
 	if (SUCCEEDED(hr))
 	{
 		hr = mGraphicFactory.GetWriteFactory()->CreateTextFormat(
@@ -42,6 +43,20 @@ void GraphicsManager::Initialize(HWND hwnd)
 			L"",
 			&m_textFormat);
 	}
+	if (FAILED(hr))
+	{
+		hr = mGraphicFactory.GetWriteFactory()->CreateTextFormat(
+			L"Segoe UI",
+			nullptr,
+			DWRITE_FONT_WEIGHT_NORMAL,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			18.0f,
+			L"",
+			&m_textFormat);
+	}
+
+	mDpi = dpi;
 }
 
 D2D1_WINDOW_STATE GraphicsManager::CheckWindowState() const
@@ -121,10 +136,16 @@ HRESULT GraphicsManager::CreateDeviceResources(HWND hwnd)
 		{
 			LOG(L"Creating HWND render target\n");
 			D2D1_RENDER_TARGET_PROPERTIES renderProperties = D2D1::RenderTargetProperties();
-			renderProperties.dpiX = 96.0f;
-			renderProperties.dpiY = 96.0f;
+			renderProperties.dpiX = mDpi;
+			renderProperties.dpiY = mDpi;
 
-			auto hwndProperties = D2D1::HwndRenderTargetProperties(hwnd, D2D1::SizeU((rc.right - rc.left), (rc.bottom - rc.top)));
+			auto hwndProperties = D2D1::HwndRenderTargetProperties(
+				hwnd, 
+				D2D1::SizeU(
+					(rc.right - rc.left), 
+					(rc.bottom - rc.top)
+				)
+			);
 
 			hr = mGraphicFactory.GetD2Factory()->CreateHwndRenderTarget(
 				renderProperties,
@@ -132,7 +153,10 @@ HRESULT GraphicsManager::CreateDeviceResources(HWND hwnd)
 				&m_renderTarget);
 			if (SUCCEEDED(hr))
 			{
-				hr = m_renderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &m_brush);
+				hr = m_renderTarget->CreateSolidColorBrush(
+					D2D1::ColorF(D2D1::ColorF::White),
+					&m_brush
+				);
 			}
 		}
 	}
@@ -179,11 +203,11 @@ HRESULT GraphicsManager::CreateBitmapFromIStream(IStream* pStream)
 	{
 		LOG(L"Create format converter\n");
 		hr = Converter()->Initialize(
-			frame, 
-			GUID_WICPixelFormat32bppPBGRA, 
-			WICBitmapDitherTypeNone, 
-			nullptr, 
-			0.0f, 
+			frame,
+			GUID_WICPixelFormat32bppPBGRA,
+			WICBitmapDitherTypeNone,
+			nullptr,
+			0.0f,
 			WICBitmapPaletteTypeCustom);
 	}
 
@@ -211,10 +235,10 @@ HRESULT GraphicsManager::CreateBitmapFromFile(std::wstring const& Filepath)
 	if (SUCCEEDED(hr))
 	{
 		hr = mGraphicFactory.GetWICFactory()->CreateDecoderFromFilename(
-			Filepath.c_str(), 
-			nullptr, 
-			GENERIC_READ, 
-			WICDecodeMetadataCacheOnDemand, 
+			Filepath.c_str(),
+			nullptr,
+			GENERIC_READ,
+			WICDecodeMetadataCacheOnDemand,
 			&decoder);
 	}
 
@@ -271,7 +295,7 @@ void GraphicsManager::DrawText(std::wstring const& Text, float x, float y, D2D1:
 	{
 		hr = mGraphicFactory.GetWriteFactory()->CreateTextLayout(Text.c_str(), static_cast<UINT32>(Text.size()), TextFormat(), Size.width, Size.height, &layout);
 	}
-	
+
 	DWRITE_TEXT_METRICS metric{};
 	if (SUCCEEDED(hr))
 	{
