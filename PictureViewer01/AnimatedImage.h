@@ -24,6 +24,6 @@ public:
 	bool IsLoaded();
 	void SetLoaded(bool aValue);
 	void Render(ID2D1HwndRenderTarget* renderTarget);
-	void Update(ID2D1HwndRenderTarget* renderTarget);
+	void Update();
 };
 

@@ -226,10 +226,10 @@ void AnimatedImage::Render(ID2D1HwndRenderTarget* renderTarget)
 	// here we should draw a picture and then draw it to our HwndRenderTarget
 }
 
-void AnimatedImage::Update(ID2D1HwndRenderTarget* renderTarget)
+void AnimatedImage::Update()
 {
 	mCurrentFrame = mFrames.at(mCurrentFrameIdx++ % mFrameCount);
-	InvalidateRect(renderTarget->GetHwnd(), nullptr, TRUE);
+	
 
 	// This should be called in a timer from the Viewer class
 }

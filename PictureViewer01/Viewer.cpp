@@ -242,10 +242,11 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 		{
 			LOG(L"ESCAPE pressed\n");
 			m_imageX = m_imageY = 0;
-
+			mAnimImage.SetLoaded(false);
+			
 			mZipManager.Clear();
-			mGraphicManager.ReleaseConverter();
-			mGraphicManager.ReleaseDeviceResources(); // BUG here when we press ESCAPE
+			mGraphicManager.ReleaseConverter();		
+			mGraphicManager.ReleaseDeviceResources();
 			ResetTitle();
 		}
 
@@ -412,7 +413,8 @@ void Viewer::OnChar(wchar_t keyCode, short repeatCount) noexcept
 
 void Viewer::OnTimer() noexcept
 {
-	mAnimImage.Update(mGraphicManager.RenderTarget());
+	mAnimImage.Update();
+	InvalidateRect(m_hwnd, nullptr, TRUE);
 }
 
 void Viewer::OnDpiChanged(int x, int y, RECT rct) noexcept
