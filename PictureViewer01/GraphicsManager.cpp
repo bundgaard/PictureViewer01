@@ -339,3 +339,9 @@ void GraphicsManager::DrawTextCentered(std::wstring const& Text, float y, D2D1::
 	SafeRelease(layout);
 
 }
+
+
+void GraphicsManager::Render(ID2D1HwndRenderTarget* renderTarget)
+{
+
+}

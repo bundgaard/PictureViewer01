@@ -112,6 +112,8 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 	HRESULT hr = S_OK;
 	PAINTSTRUCT ps{};
 
+	// MOVE THE ID2D1HWND RENDER TO VIEWER AND SEPARATE IT FORM mGraphicManager
+
 	hr = mGraphicManager.CreateDeviceResources(hwnd);
 	if (SUCCEEDED(hr) && !(mGraphicManager.CheckWindowState() & D2D1_WINDOW_STATE_OCCLUDED))
 	{

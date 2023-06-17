@@ -29,6 +29,7 @@ I guess a battleplan would be to separate out the Graphic Manager to two classes
 
 GraphicsManager will become factory for Direct2D and its affiliated members.
 */
+
 class GraphicFactory;
 class GraphicsManager
 {
@@ -66,6 +67,8 @@ public:
 	ID2D1Bitmap* Bitmap(); // should be moved
 	IDWriteTextFormat* TextFormat(); // should be moved
 	IWICFormatConverter* Converter();
+
+	void Render(ID2D1HwndRenderTarget* renderTarget);
 
 
 };

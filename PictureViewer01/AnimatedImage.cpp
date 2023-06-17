@@ -3,6 +3,7 @@
 #include "GraphicsManager.h"
 #include "Log.h"
 #include <stdexcept>
+#include <atlbase.h>
 
 AnimatedImage::AnimatedImage(GraphicFactory& graphicsFactory)
 	: mGraphicsFactory(graphicsFactory)
@@ -28,8 +29,9 @@ AnimatedImage::~AnimatedImage()
 void AnimatedImage::Load(std::wstring const& filepath, ID2D1HwndRenderTarget* renderTarget)
 {
 	HRESULT hr = S_OK;
-
-	IWICBitmapDecoder* decoder = nullptr;
+	
+	CComPtr<IWICBitmapDecoder> decoder;
+	CComPtr<IWICFormatConverter> formatConverter;
 
 	if (SUCCEEDED(hr))
 	{
@@ -52,7 +54,7 @@ void AnimatedImage::Load(std::wstring const& filepath, ID2D1HwndRenderTarget* re
 	}
 	LOG(L"Framecount %u\n", mFrameCount);
 
-	IWICFormatConverter* formatConverter = nullptr;
+	
 	if (SUCCEEDED(hr))
 	{
 		HRESULT hr = S_OK;
@@ -60,15 +62,43 @@ void AnimatedImage::Load(std::wstring const& filepath, ID2D1HwndRenderTarget* re
 
 		if (SUCCEEDED(hr))
 		{
-			for (unsigned i = 0; i < mFrameCount; i++)
+			for (unsigned i = 0; i < mFrameCount; ++i)
 			{
 
-				IWICBitmapFrameDecode* frame = nullptr;
-				ID2D1Bitmap* bitmap = nullptr;
+
+				CComPtr<IWICBitmapFrameDecode> frame;
+				CComPtr<ID2D1Bitmap> bitmap;
+
+
 				if (SUCCEEDED(hr))
 				{
 					hr = decoder->GetFrame(i, &frame);
 				}
+
+
+				WICPixelFormatGUID format;
+				if (SUCCEEDED(hr))
+				{
+					hr = frame->GetPixelFormat(&format);
+				}
+
+				WICColor rgbColors[256] = {};
+				UINT actualColors = 0;
+				{
+					CComPtr<IWICPalette> palette;
+					
+					hr = mGraphicsFactory.GetWICFactory()->CreatePalette(&palette);
+					if (SUCCEEDED(hr))
+					{
+						hr = decoder->CopyPalette(palette);
+					}
+
+					if (SUCCEEDED(hr))
+					{
+						hr = palette->GetColors(static_cast<UINT>(std::size(rgbColors)), rgbColors, &actualColors);
+					}
+				}
+				OutputDebugStringW(L"Got the palette\n");
 				if (SUCCEEDED(hr))
 				{
 					hr = mGraphicsFactory.GetWICFactory()->CreateFormatConverter(&formatConverter); // TODO: maybe a separate everytime or reuse?
@@ -82,35 +112,36 @@ void AnimatedImage::Load(std::wstring const& filepath, ID2D1HwndRenderTarget* re
 							WICBitmapDitherTypeNone,
 							nullptr,
 							0.0f,
-							WICBitmapPaletteTypeCustom
+							WICBitmapPaletteTypeMedianCut
 						);
 					}
+
 					if (SUCCEEDED(hr))
 					{
 						LOG(L"FormatConverter initialized %u\n", i);
-						hr = renderTarget->CreateBitmapFromWicBitmap(formatConverter, &bitmap);
+						hr = renderTarget->CreateBitmapFromWicBitmap(
+							formatConverter,
+							/*D2D1::BitmapProperties(
+								D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_STRAIGHT)
+							),*/
+							&bitmap
+						);
 					}
 
 					if (SUCCEEDED(hr))
 					{
 						LOG(L"Created Bitmap from WICBitmap %u\n", i);
-						mFrames.emplace_back(std::move(bitmap));
+						mFrames.emplace_back(std::move(bitmap.Detach()));
 					}
 
 				}
-
+				formatConverter.Release();
 				if (FAILED(hr))
 				{
 					LOG(L"Failed to go through all frames\n");
 				}
-
-				frame->Release();
-				frame = nullptr;
-				formatConverter->Release();
-				formatConverter = nullptr;
 			}
 		}
-
 	}
 
 
@@ -125,14 +156,6 @@ void AnimatedImage::Load(std::wstring const& filepath, ID2D1HwndRenderTarget* re
 		mLoaded = true;
 		mCurrentFrame = mFrames[0];
 	}
-
-
-	if (decoder)
-	{
-		decoder->Release();
-		decoder = nullptr;
-	}
-
 }
 
 bool AnimatedImage::IsLoaded()
@@ -206,13 +229,15 @@ void AnimatedImage::Render(ID2D1HwndRenderTarget* renderTarget)
 				)
 			);
 			ID2D1SolidColorBrush* brush = nullptr;
-			hr = renderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
+			hr = renderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Pink), &brush);
 			if (SUCCEEDED(hr))
 			{
 				renderTarget->FillRectangle(clientRect, brush);
 			}
 			
-			renderTarget->DrawBitmap(mCurrentFrame, clientRect);
+			auto gridRect = D2D1::RectF(0, 0, width, height);
+			renderTarget->DrawBitmap(mFrames[1], gridRect);
+			renderTarget->DrawBitmap(mFrames[mFrameCount/2-1], gridRect);
 			renderTarget->SetTransform(transform);
 			if (brush)
 			{
@@ -228,8 +253,5 @@ void AnimatedImage::Render(ID2D1HwndRenderTarget* renderTarget)
 
 void AnimatedImage::Update()
 {
-	mCurrentFrame = mFrames.at(mCurrentFrameIdx++ % mFrameCount);
-	
-
 	// This should be called in a timer from the Viewer class
 }
