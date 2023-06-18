@@ -14,7 +14,8 @@
 
 #include <windowsx.h>
 #include <strsafe.h>
-
+#include <array>
+#include <atlbase.h>
 
 
 #define CM_ZIP_LOADED WM_USER + 0
@@ -129,10 +130,40 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 			auto ptr = mGraphicManager.Bitmap();
 			hr = mGraphicManager.RenderTarget()->CreateBitmapFromWicBitmap(mGraphicManager.Converter(), &ptr);
 		}
+		CComPtr<ID2D1RadialGradientBrush> radialBrush = nullptr;
+		CComPtr<ID2D1GradientStopCollection> collection = nullptr;
+		std::array<D2D1_GRADIENT_STOP, 3> stops = {
+			{			
+				
+				D2D1::GradientStop(0.0f, D2D1::ColorF(D2D1::ColorF::DarkGray)),
+				D2D1::GradientStop(0.50f, D2D1::ColorF(D2D1::ColorF::Crimson)),
+				D2D1::GradientStop(1.0f, D2D1::ColorF(D2D1::ColorF::Black)),
+			}
+		};
 
+
+		hr = mGraphicManager.RenderTarget()->CreateGradientStopCollection(stops.data(), stops.size(), &collection);
+
+		if (SUCCEEDED(hr))
+		{
+
+			hr = mGraphicManager.RenderTarget()->CreateRadialGradientBrush(
+				D2D1::RadialGradientBrushProperties(
+					D2D1::Point2F(width / 2.0f, height / 2.0f),
+					D2D1::Point2F(),
+					width / 2.0f, height / 2.0f
+				),
+				collection,
+				&radialBrush
+			);
+		}
 
 		mGraphicManager.Brush()->SetColor(D2D1::ColorF(D2D1::ColorF::Crimson));
-		mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, width, height), mGraphicManager.Brush());
+		if (SUCCEEDED(hr))
+		{
+			mGraphicManager.RenderTarget()->FillRectangle(D2D1::RectF(0.f, 0.f, width, height), radialBrush);
+		}
+
 		mGraphicManager.Brush()->SetColor(color);
 
 		mGraphicManager.DrawTextCentered(L"[CTRL] + [O] - To open archive.", 50, D2D1::ColorF::White);
@@ -141,7 +172,7 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 
 		if (mGraphicManager.Bitmap())
 		{
-			
+
 			const auto [bitmapWidth, bitmapHeight] = mGraphicManager.Bitmap()->GetSize();
 
 			constexpr float marginLeft = 50.0f;
@@ -245,9 +276,9 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 			LOG(L"ESCAPE pressed\n");
 			m_imageX = m_imageY = 0;
 			mAnimImage.SetLoaded(false); // BUG in these four lines
-			
+
 			mZipManager.Clear();
-			mGraphicManager.ReleaseConverter();		
+			mGraphicManager.ReleaseConverter();
 			mGraphicManager.ReleaseDeviceResources();
 			ResetTitle();
 		}
@@ -427,10 +458,10 @@ void Viewer::OnDpiChanged(int x, int y, RECT rct) noexcept
 	OutputDebugStringW(out.str().c_str());
 
 	SetWindowPos(
-		m_hwnd, nullptr, 
-		rct.left, rct.top, 
-		rct.right - rct.left, 
-		rct.bottom - rct.top, 
+		m_hwnd, nullptr,
+		rct.left, rct.top,
+		rct.right - rct.left,
+		rct.bottom - rct.top,
 		SWP_NOZORDER | SWP_NOACTIVATE
 	);
 
