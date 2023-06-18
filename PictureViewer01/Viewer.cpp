@@ -244,7 +244,7 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 		{
 			LOG(L"ESCAPE pressed\n");
 			m_imageX = m_imageY = 0;
-			mAnimImage.SetLoaded(false);
+			mAnimImage.SetLoaded(false); // BUG in these four lines
 			
 			mZipManager.Clear();
 			mGraphicManager.ReleaseConverter();		
@@ -263,7 +263,7 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	{
 		try
 		{
-			mAnimImage.Load(L"C:\\temp\\vbpam0a7plza1.gif", mGraphicManager.RenderTarget());
+			mAnimImage.Load(L"C:\\temp\\bone-train.gif", mGraphicManager.RenderTarget());
 			SetTimer(m_hwnd, 0, 60, nullptr);
 
 		}

@@ -16,6 +16,7 @@ class AnimatedImage
 	ID2D1Bitmap* mCurrentFrame = nullptr;
 	int mCurrentFrameIdx = 0;
 	std::vector<ID2D1Bitmap*> mFrames;
+	void DrawBackground(ID2D1HwndRenderTarget* renderTarget);
 public:
 	AnimatedImage(GraphicFactory& graphicsFactory);
 	~AnimatedImage();
