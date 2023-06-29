@@ -153,7 +153,7 @@ public:
 			pThis->m_hwnd = hwnd;
 			return pThis->OnNcCreate(wparam, lparam);
 		}
-		else if (Clz* pThis = Handle(hwnd))
+		if (Clz* pThis = Handle(hwnd))
 		{
 			return pThis->WndProc(hwnd, msg, wparam, lparam);
 		}

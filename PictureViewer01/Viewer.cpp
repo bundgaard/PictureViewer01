@@ -165,11 +165,13 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 		}
 
 		mGraphicManager.Brush()->SetColor(color);
-
-		mGraphicManager.DrawTextCentered(L"[CTRL] + [O] - To open archive.", 50, D2D1::ColorF::White);
-		mGraphicManager.DrawTextCentered(L"[PageUp] and [PageDown] to move back and forth between images in archive.", 100, D2D1::ColorF::White);
-		mGraphicManager.DrawTextCentered(L"[ESC] to unload archive and return back to this menu.", 150, D2D1::ColorF::White);
-
+		auto* const information = L"[CTRL] + [O] - To open archive."
+			L"\r\n"
+			L"[PageUp] and [PageDown] - to move back and forth between images in archive."
+			L"\r\n"
+			L"[ESC] - to unload archive and return back to this menu."
+			;
+		mGraphicManager.DrawTextCentered(information, 50, D2D1::ColorF::White);
 		if (mGraphicManager.Bitmap())
 		{
 
@@ -337,7 +339,7 @@ HRESULT Viewer::LoadImage()
 	}
 	if (SUCCEEDED(hr))
 	{
-		std::unique_ptr<ZipFile>& item = mZipManager.Current();
+		std::unique_ptr<ZipFile> const& item = mZipManager.Current();
 		LOG(L"Create decoder from stream\n");
 		hr = item->RecreateStream();
 		if (SUCCEEDED(hr))
