@@ -3,6 +3,8 @@
 #include <dwrite.h>
 #include <wincodec.h>
 
+#include "Log.h"
+
 GraphicFactory::GraphicFactory()
 	: mD2Factory(nullptr)
 	, mWriteFactory(nullptr)
@@ -53,7 +55,7 @@ GraphicFactory::GraphicFactory()
 
 GraphicFactory::~GraphicFactory()
 {
-	OutputDebugStringW(L"GraphicFactory DTOR\n");
+	LOG(L"GraphicFactory DTOR\n");
 	if (mWriteFactory)
 	{
 		mWriteFactory->Release();

@@ -23,6 +23,7 @@
 namespace
 {
 	constexpr wchar_t VIEWER_CLASSNAME[] = L"CPICTUREVIEWER01";
+	constexpr wchar_t NEWLINE[] = L"\r\n";
 }
 
 
@@ -89,8 +90,8 @@ HRESULT Viewer::Initialize(const HINSTANCE hInst)
 			hwnd,
 			nullptr,
 			0, 0,
-			640 * static_cast<float>(mDpi) / 96.0f,
-			480 * static_cast<float>(mDpi) / 96.0f,
+			static_cast<int>(640.0f * static_cast<float>(mDpi) / 96.0f),
+			static_cast<int>(480.0f * static_cast<float>(mDpi) / 96.0f),
 			SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOZORDER
 		);
 		mGraphicManager.Initialize(hwnd, mDpi);
@@ -132,9 +133,9 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 		}
 		CComPtr<ID2D1RadialGradientBrush> radialBrush = nullptr;
 		CComPtr<ID2D1GradientStopCollection> collection = nullptr;
-		std::array<D2D1_GRADIENT_STOP, 3> stops = {
-			{			
-				
+		std::array<D2D1_GRADIENT_STOP, 3> const stops = {
+			{
+
 				D2D1::GradientStop(0.0f, D2D1::ColorF(D2D1::ColorF::DarkGray)),
 				D2D1::GradientStop(0.50f, D2D1::ColorF(D2D1::ColorF::Crimson)),
 				D2D1::GradientStop(1.0f, D2D1::ColorF(D2D1::ColorF::Black)),
@@ -142,7 +143,10 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 		};
 
 
-		hr = mGraphicManager.RenderTarget()->CreateGradientStopCollection(stops.data(), stops.size(), &collection);
+		hr = mGraphicManager.RenderTarget()->CreateGradientStopCollection(
+			stops.data(), 
+			static_cast<int>(stops.size()), 
+			&collection);
 
 		if (SUCCEEDED(hr))
 		{
@@ -457,7 +461,7 @@ void Viewer::OnDpiChanged(int x, int y, RECT rct) noexcept
 	// SetWindowPos(m_hwnd, nullptr, )
 	std::wstringstream out;
 	out << L"OnDpiChanged " << x << L"," << y << "\n";
-	OutputDebugStringW(out.str().c_str());
+	LOG(out.str().c_str());
 
 	SetWindowPos(
 		m_hwnd, nullptr,
@@ -479,15 +483,13 @@ void Viewer::Start() noexcept
 	}
 }
 
-void Viewer::UpdateTitle()
+void Viewer::UpdateTitle() const
 {
-	std::wstring title = TITLE;
-	title += L" ";
-	title += std::to_wstring(mCurrentPage + 1);
-	title += L"/";
-	title += std::to_wstring(mZipManager.Size());
+	std::wstringstream title;
+	title << TITLE << L" "
+		<< (mCurrentPage + 1) << L"/" << mZipManager.Size();
 
-	SetWindowText(m_hwnd, title.c_str());
+	SetWindowText(m_hwnd, title.str().c_str());
 
 }
 
@@ -504,10 +506,10 @@ void Viewer::ArchiveWorker(Viewer* viewer, std::wstring const& Filename)
 	viewer->mZipManager.ReadZip(Filename);
 	viewer->m_imageX = viewer->m_imageY = 0;
 	HRESULT hr = viewer->LoadImage();
-
-	viewer->UpdateTitle();
 	if (FAILED(hr))
 	{
 		LOG(L"Failed to load picture\n");
 	}
+	viewer->UpdateTitle();
+
 }

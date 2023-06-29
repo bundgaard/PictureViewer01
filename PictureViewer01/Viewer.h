@@ -44,7 +44,7 @@ public:
 	static void Start() noexcept;
 
 protected:
-	void UpdateTitle();
+	void UpdateTitle() const;
 	void ResetTitle() const;
 	static void ArchiveWorker(Viewer* viewer, std::wstring const& Filename);
 
