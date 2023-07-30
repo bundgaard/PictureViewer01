@@ -52,7 +52,7 @@ void ZipManager::ReadZip(std::wstring const& filename)
 
 	for (int i = 0; i < numFiles; i++)
 	{
-		struct zip_stat stat{};
+		struct zip_stat stat {};
 		zip_stat_index(archive, i, 0, &stat);
 		zip_file* File = zip_fopen_index(archive, i, 0);
 		if (!File)
@@ -60,14 +60,14 @@ void ZipManager::ReadZip(std::wstring const& filename)
 			LOG(L"zip could not open index\n");
 			continue;
 		}
-		
+
 		auto ptr = std::make_unique<ZipFile>(stat.name, static_cast<size_t>(stat.size));
 		std::vector<byte> bytes;
 		bytes.resize(ptr->Size);
 		const zip_int64_t bytesRead = zip_fread(File, bytes.data(), bytes.size()); // TODO: could actually have a list and loop through it before hand or just do the work and do it after? I choose the latter.
-		
+
 		HRESULT hr = S_OK;
-		hr = bytesRead == ptr->Size ? S_OK : E_FAIL;
+		hr = static_cast<size_t>(bytesRead) == ptr->Size ? S_OK : E_FAIL;
 		if (SUCCEEDED(hr))
 		{
 			hr = ptr->Write(std::move(bytes));

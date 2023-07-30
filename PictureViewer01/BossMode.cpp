@@ -84,9 +84,10 @@ void BossMode::Render(ID2D1HwndRenderTarget* renderTarget) noexcept
 		{
 			brush->SetColor(D2D1::ColorF(D2D1::ColorF::Yellow));
 			DWRITE_TEXT_METRICS tm{};
-			layout->GetMetrics(&tm);
-
-			renderTarget->DrawTextLayout(D2D1::Point2F((width - tm.widthIncludingTrailingWhitespace) / 2.0f, (height - tm.height) / 2.0f), layout, brush);
+			if (SUCCEEDED(layout->GetMetrics(&tm)))
+			{
+				renderTarget->DrawTextLayout(D2D1::Point2F((width - tm.widthIncludingTrailingWhitespace) / 2.0f, (height - tm.height) / 2.0f), layout, brush);
+			}
 			layout->Release();
 			layout = nullptr;
 		}
