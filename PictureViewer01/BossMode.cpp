@@ -17,7 +17,7 @@ void BossMode::DrawCenteredText(std::wstring const& aText)
 {
 }
 
-BossMode::BossMode(GraphicFactory& graphicsFactory) : mGraphicsFactory(graphicsFactory), mIsActive(false), mTextFormat(nullptr)
+BossMode::BossMode(GraphicFactory& graphicsFactory) : mGraphicsFactory(graphicsFactory), mTextFormat(nullptr), mIsActive(false)
 {
 	HRESULT hr = S_OK;
 	
