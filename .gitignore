@@ -363,3 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 /PictureViewer01/vcpkg_installed/x64-windows
 /.idea
+/PictureViewer01/vcpkg_installed/x86-windows
