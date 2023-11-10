@@ -32,6 +32,6 @@ public:
 	}
 
 	Com(Com&) = delete;
-	Com operator=(Com&) = delete;
+	Com& operator=(Com&) = delete;
 
 };

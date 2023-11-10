@@ -56,7 +56,7 @@ namespace
 
 	struct Transparency
 	{
-		
+
 
 		int Index;
 		bool Transparent;
@@ -141,7 +141,7 @@ AnimatedImage::Load(
 	HRESULT hr = S_OK;
 
 	CComPtr<IWICBitmapDecoder> decoder;
-	
+
 
 	if (SUCCEEDED(hr))
 	{
@@ -268,6 +268,180 @@ AnimatedImage::Load(
 	}
 }
 
+void AnimatedImage::Load(int32_t resourceId, ID2D1HwndRenderTarget* renderTarget)
+{
+	HRSRC hResource = FindResourceW(nullptr, MAKEINTRESOURCE(resourceId), RT_RCDATA);
+	if (hResource == nullptr)
+	{
+		OutputDebugStringW(L"Failed to find resource\n");
+		return;
+	}
+
+	HGLOBAL hGlobal = LoadResource(nullptr, hResource);
+	if (hGlobal == nullptr)
+	{
+		OutputDebugStringW(L"Failed to load resource\n");
+		return;
+	}
+
+	LPVOID resourceData = LockResource(hGlobal);
+	if (resourceData == nullptr)
+	{
+		OutputDebugStringW(L"Failed to lock resource\n");
+		return;
+	}
+
+	DWORD dwResource = SizeofResource(nullptr, hResource);
+	OutputDebugStringW((L"Resource size " + std::to_wstring(dwResource) +L"\n").c_str());
+	IStream* iStream = nullptr;
+
+
+	HRESULT hr = S_OK;
+	
+	hr = CreateStreamOnHGlobal(nullptr, false, &iStream);
+
+	if (SUCCEEDED(hr))
+	{
+		hr = iStream->Write(resourceData, dwResource, nullptr);
+		
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		LARGE_INTEGER li{};
+		hr = iStream->Seek(li, STREAM_SEEK_SET, nullptr);
+	}
+
+	CComPtr<IWICBitmapDecoder> decoder;
+
+
+	if (SUCCEEDED(hr))
+	{
+		hr = mGraphicsFactory.GetWICFactory()->CreateDecoderFromStream(
+			iStream,
+			nullptr,
+			WICDecodeMetadataCacheOnDemand,
+			&decoder);
+	}
+
+	
+	if (SUCCEEDED(hr))
+	{
+		GUID containerFormat;
+		hr = decoder->GetContainerFormat(&containerFormat);
+		if (FAILED(hr))
+		{
+			throw std::runtime_error("Failed to get container format.");
+		}
+
+		/*if (std::memcmp(&containerFormat, &GUID_ContainerFormatGif, sizeof(GUID) != 0))
+		{
+			throw std::runtime_error("Format not supported..");
+		}*/
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		hr = decoder->GetFrameCount(&mFrameCount);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		LOG(L"Framecount %u\n", mFrameCount);
+	}
+
+	CComPtr<IWICMetadataQueryReader> metaReader;
+	hr = decoder->GetMetadataQueryReader(&metaReader);
+	if (SUCCEEDED(hr))
+	{
+		UINT ImageWidth = GetWidth(metaReader);
+		UINT ImageHeight = GetHeight(metaReader);
+		LOG(L"Image: %u,%u\n", ImageWidth, ImageHeight);
+
+	}
+	
+	for (unsigned i = 0; i < mFrameCount; i++)
+	{
+		CComPtr<IWICFormatConverter> formatConverter;
+		CComPtr<IWICBitmapFrameDecode> frame;
+		CComPtr<ID2D1Bitmap> bitmap;
+
+		hr = decoder->GetFrame(i, &frame);
+
+		WICPixelFormatGUID format;
+		if (SUCCEEDED(hr))
+		{
+			hr = frame->GetPixelFormat(&format);
+		}
+
+		WICColor rgbColors[256] = {};
+		UINT actualColors = 0;
+
+		CComPtr<IWICPalette> palette;
+
+		hr = mGraphicsFactory.GetWICFactory()->CreatePalette(&palette);
+		if (SUCCEEDED(hr))
+		{
+			hr = decoder->CopyPalette(palette);
+		}
+
+		if (SUCCEEDED(hr))
+		{
+			hr = palette->GetColors(static_cast<UINT>(std::size(rgbColors)), rgbColors, &actualColors);
+		}
+
+		LOG(L"Got the palette\n");
+		if (SUCCEEDED(hr))
+		{
+			hr = mGraphicsFactory.GetWICFactory()->CreateFormatConverter(&formatConverter); // TODO: maybe a separate everytime or reuse?
+			if (SUCCEEDED(hr))
+			{
+				LOG(L"Decoder.GetFrame %u\n", i);
+				// Should initialize the converter and create ID2D1Bitmap's to be saved in the std::vector
+				hr = formatConverter->Initialize(
+					frame,
+					GUID_WICPixelFormat32bppPBGRA,
+					WICBitmapDitherTypeNone,
+					nullptr,
+					0.0f,
+					WICBitmapPaletteTypeCustom
+				);
+			}
+
+			if (SUCCEEDED(hr))
+			{
+				LOG(L"FormatConverter initialized %u\n", i);
+				hr = renderTarget->CreateBitmapFromWicBitmap(
+					formatConverter,
+					&bitmap
+				);
+			}
+
+			if (SUCCEEDED(hr))
+			{
+				LOG(L"Created Bitmap from WICBitmap %u\n", i);
+				mFrames.emplace_back(std::move(bitmap.Detach()));
+			}
+
+		}
+		if (FAILED(hr))
+		{
+			LOG(L"Failed to go through all frames\n");
+		}
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		LOG(L"Loaded set true\n");
+		mLoaded = true;
+		mCurrentFrame = mFrames[0];
+	}
+
+	iStream->Release();
+
+
+}
+
 bool AnimatedImage::IsLoaded()
 {
 	LOG(L"AnimatedImage IsLoaded %d\n", mLoaded);
@@ -304,7 +478,7 @@ void AnimatedImage::Render(ID2D1HwndRenderTarget* renderTarget)
 
 			const auto bitmapRatio = mGraphicsFactory.GetRatio(bitmapWidth, bitmapHeight);
 			const auto windowRatio = mGraphicsFactory.GetRatio(
-				width - (marginLeft + marginRight), 
+				width - (marginLeft + marginRight),
 				height - (marginTop + marginBottom)
 			); // 100.0f are the imaginary borders, will be moved somewhere
 
@@ -340,7 +514,7 @@ void AnimatedImage::Render(ID2D1HwndRenderTarget* renderTarget)
 				)
 			);
 			DrawBackground(renderTarget);
-			
+
 			auto gridRect = D2D1::RectF(0, 0, mFrames[0]->GetSize().width, mFrames[0]->GetSize().height);
 			renderTarget->DrawBitmap(mFrames[0], gridRect);
 			gridRect.left += mFrames[0]->GetSize().width;

@@ -100,6 +100,9 @@
     <None Include="ZipExample.md" />
     <None Include="vcpkg.json" />
     <None Include="cpp.hint" />
+    <None Include="rcdata1.bin">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="PictureViewer01.rc">
@@ -111,6 +114,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="ApplicationIcon.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\..\Temp\bone-train.gif">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

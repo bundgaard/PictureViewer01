@@ -169,6 +169,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
+    <None Include="rcdata1.bin" />
     <None Include="vcpkg.json" />
     <None Include="ZipExample.md" />
   </ItemGroup>
@@ -176,6 +177,7 @@
     <ResourceCompile Include="PictureViewer01.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\..\..\Temp\bone-train.gif" />
     <Image Include="ApplicationIcon.ico" />
     <Image Include="ApplicationIcon.png" />
   </ItemGroup>

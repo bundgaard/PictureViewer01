@@ -30,6 +30,7 @@ public:
 	[[nodiscard]] HRESULT LoadFile(std::wstring const& path);
 	[[nodiscard]] HRESULT LoadImage();
 	[[nodiscard]] HRESULT OpenArchive();
+	[[nodiscard]] HRESULT OpenFolder();
 
 	void OnSize(UINT width, UINT height) noexcept override;
 	LRESULT OnPaint(HWND hwnd) noexcept override;
@@ -54,6 +55,8 @@ private:
 	ZipManager  mZipManager;
 	AnimatedImage mAnimImage;
 	BossMode mBossMode;
+
+	std::vector<std::wstring> m_files{};
 
 	float m_lastMouseX{};
 	float m_lastMouseY{};

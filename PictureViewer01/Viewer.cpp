@@ -16,6 +16,8 @@
 #include <strsafe.h>
 #include <array>
 #include <atlbase.h>
+#include <shobjidl.h>
+#include <shlwapi.h>
 
 
 #define CM_ZIP_LOADED WM_USER + 0
@@ -171,6 +173,8 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 		mGraphicManager.Brush()->SetColor(color);
 		auto* const information = L"[CTRL] + [O] - To open archive."
 			L"\r\n"
+			L"[CTRL] + [F] - To open folder"
+			L"\r\n"
 			L"[PageUp] and [PageDown] - to move back and forth between images in archive."
 			L"\r\n"
 			L"[ESC] - to unload archive and return back to this menu."
@@ -242,6 +246,7 @@ inline LRESULT Viewer::OnPaint(const HWND hwnd) noexcept
 
 void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 {
+	// https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 #if defined(DEBUG) ||defined(_DEBUG)
 
 	std::wstringstream out;
@@ -294,13 +299,18 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 		{
 			HRESULT hr = OpenArchive();
 		}
+		if (GetKeyState(VK_CONTROL) & 0x0800 && virtualKey == 0x46) // [CTRL] + [o]
+		{
+			(void)OpenFolder();
+		}
 	}
 
 	if (virtualKey == 0x5a) // z
 	{
 		try
 		{
-			mAnimImage.Load(L"C:\\temp\\bone-train.gif", mGraphicManager.RenderTarget());
+
+			mAnimImage.Load(IDR_RCDATA1, mGraphicManager.RenderTarget());
 			SetTimer(m_hwnd, 0, 60, nullptr);
 
 		}
@@ -328,6 +338,55 @@ void Viewer::OnKeyDown(const UINT32 virtualKey) noexcept
 	InvalidateRect(m_hwnd, nullptr, true);
 }
 
+HRESULT Viewer::OpenFolder()
+{
+	IFileDialog* pFileDialog = nullptr;
+	std::wstringstream selectedFolder{};
+
+	HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pFileDialog));
+	if (SUCCEEDED(hr))
+	{
+		DWORD dwOptions;
+		pFileDialog->GetOptions(&dwOptions);
+		pFileDialog->SetOptions(dwOptions | FOS_PICKFOLDERS);
+
+		if (SUCCEEDED(pFileDialog->Show(nullptr)))
+		{
+			IShellItem* pSelectedItem = nullptr;
+			if (SUCCEEDED(pFileDialog->GetResult(&pSelectedItem)))
+			{
+				PWSTR pszFilePath = nullptr;
+				if (SUCCEEDED(pSelectedItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath)))
+				{
+					selectedFolder << pszFilePath;
+					CoTaskMemFree(pszFilePath);
+				}
+				pSelectedItem->Release();
+			}
+		}
+		pFileDialog->Release();
+	}
+	std::vector<std::wstring> images{};
+
+	if (!selectedFolder.str().empty())
+	{
+		WIN32_FIND_DATAW data{};
+		HANDLE hSearch = FindFirstFileW((L"\\\\?\\" + selectedFolder.str() + L"\\*").c_str(), &data);
+		do {
+			if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			{
+				continue; // skip directories for now, else we have to look if the cFilename == '.' || '..'
+			}
+			m_files.emplace_back(selectedFolder.str() + std::wstring{ data.cFileName });
+
+			OutputDebugStringW((L"Found " + std::wstring{ data.cFileName } + L"\n").c_str());
+		} while (hSearch != INVALID_HANDLE_VALUE && FindNextFileW(hSearch, &data));
+	}
+
+
+
+	return hr;
+}
 
 HRESULT Viewer::LoadFile(std::wstring const& path)
 {
@@ -501,7 +560,8 @@ void Viewer::ResetTitle() const
 void Viewer::ArchiveWorker(Viewer* viewer, std::wstring const& Filename)
 {
 	// This could be a problem, for now its detached and it works for my use case.
-	// Could be considered bad practice, but its a background task that will be ready when its ready
+	// Could be considered bad practice, but its a background task that will be ready when its ready.
+	// 2023-11-10: I think I should look into CRITICAL_SECTION to mark it.
 	LOG(L"ArchiveWorker %s\n", Filename.c_str());
 	viewer->mZipManager.ReadZip(Filename);
 	viewer->m_imageX = viewer->m_imageY = 0;
