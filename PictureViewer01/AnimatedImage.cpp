@@ -531,4 +531,5 @@ void AnimatedImage::Render(ID2D1HwndRenderTarget* renderTarget)
 void AnimatedImage::Update()
 {
 	// This should be called in a timer from the Viewer class
+	
 }

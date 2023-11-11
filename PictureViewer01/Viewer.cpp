@@ -1,4 +1,4 @@
-
+﻿
 #include <algorithm>
 #include <thread>
 #include <sstream>
@@ -366,7 +366,6 @@ HRESULT Viewer::OpenFolder()
 		}
 		pFileDialog->Release();
 	}
-	std::vector<std::wstring> images{};
 
 	if (!selectedFolder.str().empty())
 	{
@@ -424,7 +423,7 @@ HRESULT Viewer::OpenArchive()
 	ofn.lpstrFile = szFile;
 	ofn.lpstrFile[0] = L'\0';
 	ofn.nMaxFile = sizeof(szFile);
-	ofn.lpstrFilter = L"ZIP Archive\0*.zip";
+	ofn.lpstrFilter = L"🤐 ZIP Archive\0*.zip";
 	ofn.lpstrTitle = nullptr;
 	ofn.nMaxFileTitle = 0;
 	ofn.lpstrInitialDir = nullptr;
