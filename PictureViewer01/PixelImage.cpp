@@ -1,7 +1,7 @@
 #include "PixelImage.h"
 #include <memory>
 
-PixelImage::PixelImage(PixelImage&& other) : mWidth(0), mHeight(0)
+PixelImage::PixelImage(PixelImage&& other) noexcept : mWidth(0), mHeight(0)
 {
 	*this = std::move(other);
 }

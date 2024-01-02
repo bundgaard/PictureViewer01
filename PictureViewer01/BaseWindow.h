@@ -59,14 +59,14 @@ public:
 		{
 			/*
 			wParam
-			The HIWORD of the wParam contains the Y-axis value of the new dpi of the window. 
-			The LOWORD of the wParam contains the X-axis value of the new DPI of the window. 
-			For example, 96, 120, 144, or 192. 
+			The HIWORD of the wParam contains the Y-axis value of the new dpi of the window.
+			The LOWORD of the wParam contains the X-axis value of the new DPI of the window.
+			For example, 96, 120, 144, or 192.
 			The values of the X-axis and the Y-axis are identical for Windows apps.
 			lParam
-			A pointer to a RECT structure that provides a suggested size and position 
-			of the current window scaled for the new DPI. 
-			The expectation is that apps will reposition and resize windows based on the 
+			A pointer to a RECT structure that provides a suggested size and position
+			of the current window scaled for the new DPI.
+			The expectation is that apps will reposition and resize windows based on the
 			suggestions provided by lParam when handling this message.
 			*/
 			auto* SuggestedRect = reinterpret_cast<RECT*>(lparam);
@@ -105,7 +105,11 @@ public:
 		}
 		case WM_MOUSEMOVE:
 		{
-			OnMouseMove(static_cast<MouseMoveControl>(wparam), static_cast<float>(GET_X_LPARAM(lparam)), static_cast<float>(GET_Y_LPARAM(lparam)));
+			OnMouseMove(
+				static_cast<MouseMoveControl>(wparam),
+				static_cast<float>(GET_X_LPARAM(lparam)),
+				static_cast<float>(GET_Y_LPARAM(lparam))
+			);
 			break;
 		}
 

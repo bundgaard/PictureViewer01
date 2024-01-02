@@ -12,7 +12,7 @@ class PixelImage
 
 public:
 
-	PixelImage(PixelImage&&);
+	PixelImage(PixelImage&&) noexcept;
 	PixelImage& operator=(PixelImage&&)noexcept;
 	~PixelImage();
 
